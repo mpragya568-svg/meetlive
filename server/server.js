@@ -197,8 +197,8 @@ function tryMatch(user) {
     pairs.set(user.id, other);
     pairs.set(other.id, user);
     // `user` is the initiator: they create the WebRTC offer.
-    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified }, initiator: true });
-    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified }, initiator: false });
+    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null }, initiator: true });
+    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null }, initiator: false });
     return true;
   }
   return false;
@@ -241,6 +241,9 @@ wss.on('connection', (ws) => {
         const displayName = String(msg.nickname || '').trim().slice(0, 20);
         user.nickname = displayName || profile.name.slice(0, 20);
         user.gender = ['male', 'female', 'other'].includes(msg.gender) ? msg.gender : 'other';
+        // Optional profile photo (small data URL or a Google photo URL) —
+        // shown to the matched stranger when the camera is off.
+        user.photo = typeof msg.photo === 'string' ? msg.photo.slice(0, 200000) : null;
         break;
       }
 
@@ -276,6 +279,13 @@ wss.on('connection', (ws) => {
       // placeholder instead of a black video.
       case 'cam-state':
         if (partner) send(partner.ws, { type: 'cam-state', from: user.id, on: msg.on === true });
+        break;
+
+      // Beauty filter — relayed so the partner renders YOUR filter on
+      // their screen (works on every phone, unlike baking it into the
+      // sent video, which older browsers can't do).
+      case 'filter':
+        if (partner) send(partner.ws, { type: 'filter', from: user.id, filter: String(msg.filter || '').slice(0, 200) });
         break;
 
       case 'gift': {
