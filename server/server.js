@@ -42,6 +42,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'client')));
 app.get('/health', (req, res) => res.json({ ok: true, online: clients.size }));
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'privacy.html')));
 
 // ---- Sign in with Google / Apple (optional) ----
 // Set these as environment variables on Render (see README "Sign in").
