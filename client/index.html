@@ -41,7 +41,8 @@
   .pill.gold { border-color: rgba(255,209,102,.45); color: #ffd166; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
   .topbar { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .match-btn { width: 190px; height: 190px; border-radius: 50%; border: 4px solid rgba(255,255,255,.25); background: radial-gradient(circle at 35% 30%, #ff4d8d, #8b5cf6); color: #fff; font-size: 22px; font-weight: 800; cursor: pointer; box-shadow: 0 0 40px rgba(255,77,141,.45); margin: 26px 0; animation: pulse 2.4s ease-in-out infinite; font-family: inherit; }
+  .match-btn { width: 100%; max-width: 380px; height: 64px; border-radius: 999px; border: none; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); color: #fff; font-size: 20px; font-weight: 800; cursor: pointer; box-shadow: 0 14px 36px rgba(255,77,141,.45); margin: 26px 0; animation: pulse 2.4s ease-in-out infinite; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: .2px; }
+  .match-btn .play { font-size: 18px; }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 40px rgba(255,77,141,.45); } 50% { box-shadow: 0 0 70px rgba(255,77,141,.75), 0 0 0 12px rgba(255,77,141,.08); } }
   .preview { width: 100%; max-width: 380px; aspect-ratio: 3/4; border-radius: 24px; object-fit: cover; background: #000; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
   .spinner { width: 54px; height: 54px; border: 5px solid rgba(255,255,255,.12); border-top-color: #ff4d8d; border-radius: 50%; animation: spin 1s linear infinite; margin: 24px 0; box-shadow: 0 0 24px rgba(255,77,141,.25); }
@@ -68,6 +69,9 @@
   .gift { flex: 0 0 auto; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; transition: transform .15s; }
   .gift:hover { transform: translateY(-2px); }
   .gift .emoji { font-size: 26px; display: block; }
+  .gift .emoji svg { width: 30px; height: 30px; display: block; margin: 0 auto; }
+  .gift-pop svg { width: 110px; height: 110px; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(245,158,11,.45)); }
+  .coin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: linear-gradient(135deg, #ffe08a, #f59e0b); margin-right: 4px; }
   .gift .cost { font-size: 11px; color: #ffd166; font-weight: 700; }
   /* chat drawer */
   .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: rgba(20,20,40,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.1); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
@@ -112,6 +116,11 @@
       <rect width="48" height="48" rx="13" fill="url(#logoGrad)"/>
       <path d="M20 16 L20 32 L34 24 Z" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
     </symbol>
+    <linearGradient id="giftGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset=".55" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
   </defs>
 </svg>
 
@@ -183,12 +192,12 @@
   </div>
   <div class="topbar">
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
-    <span class="pill">🪙 <b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
+    <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview" id="localVideoLobby" autoplay muted playsinline></video>
-  <button class="match-btn" onclick="findMatch()">▶<br>START</button>
-  <p style="color:#aaa;font-size:14px;text-align:center">Tap Start to match with a random stranger<br>on live video</p>
+  <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Matching</button>
+  <p style="color:#aaa;font-size:14px;text-align:center">Tap Start Matching to meet a random stranger<br>on live video</p>
   <p class="fine">Tip: open this page in a second browser window to test matching — you need 2 people online to get a match.</p>
 </div>
 
@@ -207,7 +216,7 @@
     <video id="localVideo" autoplay muted playsinline></video>
     <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span></div>
     <div class="call-top">
-      <span class="pill">🪙 <b id="coinCountCall">0</b></span>
+      <span class="pill"><span class="coin-dot"></span><b id="coinCountCall">0</b></span>
       <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
     </div>
     <div id="giftFx"></div>
@@ -259,7 +268,14 @@ const GIFTS = [
   { id: 'rocket',  emoji: '🚀', name: 'Rocket',  cost: 200 },
 ];
 
-// ---------- state ----------
+// Premium gold icons for the gift tray (replaces cartoon emoji).
+const GIFT_ICONS = {
+  rose: '<svg viewBox="0 0 24 24"><g fill="url(#giftGrad)"><ellipse cx="12" cy="7.2" rx="2.3" ry="4"/><ellipse cx="12" cy="7.2" rx="2.3" ry="4" transform="rotate(72 12 12)"/><ellipse cx="12" cy="7.2" rx="2.3" ry="4" transform="rotate(144 12 12)"/><ellipse cx="12" cy="7.2" rx="2.3" ry="4" transform="rotate(216 12 12)"/><ellipse cx="12" cy="7.2" rx="2.3" ry="4" transform="rotate(288 12 12)"/></g><circle cx="12" cy="12" r="2.5" fill="#fff" opacity=".92"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path fill="url(#giftGrad)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+  diamond: '<svg viewBox="0 0 24 24"><path fill="url(#giftGrad)" d="M7 3h10l4 6-9 12L3 9l4-6z"/><g stroke="rgba(10,10,21,.5)" stroke-width="1" fill="none"><path d="M3 9h18"/><path d="M7 3l5 6 5-6"/><path d="M12 9v12"/></g></svg>',
+  crown: '<svg viewBox="0 0 24 24"><g fill="url(#giftGrad)"><path d="M3 7l4.2 3.2L12 5l4.8 5.2L21 7l-1.6 12H4.6L3 7z"/><circle cx="3" cy="5.4" r="1.3"/><circle cx="12" cy="3.4" r="1.3"/><circle cx="21" cy="5.4" r="1.3"/></g></svg>',
+  rocket: '<svg viewBox="0 0 24 24"><g fill="url(#giftGrad)"><path d="M12 2c2.8 1.8 4.3 5 4.3 8.6 0 1.2-.2 2.4-.6 3.4H8.3c-.4-1-.6-2.2-.6-3.4C7.7 7 9.2 3.8 12 2z"/><path d="M8.5 12.5L4.5 18l4.3-1.2z"/><path d="M15.5 12.5L19.5 18l-4.3-1.2z"/></g><circle cx="12" cy="9" r="2" fill="#0a0a15"/><path d="M12 15.5L10.2 19.5 12 22.5 13.8 19.5Z" fill="#ff9f43"/></svg>',
+};
 let ws = null, pc = null, localStream = null;
 let myId = null, myCoins = 0, myNickname = 'Guest', myGender = 'other';
 let peerId = null, peerName = 'Stranger';
@@ -499,10 +515,10 @@ function handle(msg) {
       break;
     case 'chat': addChatMsg(msg.nickname, msg.text, false); break;
     case 'gift':
-      giftFx(msg.emoji, msg.nickname + ' sent you a ' + msg.name + '!');
-      toast(msg.nickname + ' sent you a ' + msg.name + ' ' + msg.emoji);
+      giftFx(msg.gift, msg.nickname + ' sent you a ' + msg.name + '!');
+      toast(msg.nickname + ' sent you a ' + msg.name);
       break;
-    case 'gift-sent': toast('You sent a ' + msg.name + ' ' + msg.emoji); break;
+    case 'gift-sent': toast('You sent a ' + msg.name); break;
     case 'reported': toast('Reported. Our team reviews every report.'); endCallUI(); break;
     case 'peer-left': {
       const why = msg.reason === 'next' ? 'Stranger skipped to the next person.'
@@ -651,8 +667,8 @@ function renderGifts() {
   GIFTS.forEach(g => {
     const b = document.createElement('button');
     b.className = 'gift';
-    const costLabel = freeTrial ? 'FREE' : '🪙 ' + g.cost;
-    b.innerHTML = '<span class="emoji">' + g.emoji + '</span>' + g.name + '<br><span class="cost">' + costLabel + '</span>';
+    const costLabel = freeTrial ? 'FREE' : '<span class="coin-dot"></span>' + g.cost;
+    b.innerHTML = '<span class="emoji">' + (GIFT_ICONS[g.id] || '') + '</span>' + g.name + '<br><span class="cost">' + costLabel + '</span>';
     b.onclick = () => sendGift(g.id);
     tray.appendChild(b);
   });
@@ -661,11 +677,11 @@ function sendGift(id) {
   if (!peerId) return;
   send({ type: 'gift', gift: id });
 }
-function giftFx(emoji, label) {
+function giftFx(giftId, label) {
   const fx = $('giftFx');
   const div = document.createElement('div');
   div.className = 'gift-pop';
-  div.innerHTML = emoji + '<small>' + label.replace(/</g, '&lt;') + '</small>';
+  div.innerHTML = (GIFT_ICONS[giftId] || '') + '<small>' + label.replace(/</g, '&lt;') + '</small>';
   fx.appendChild(div);
   setTimeout(() => div.remove(), 2100);
 }
@@ -684,7 +700,7 @@ function blockPeer() {
   toast('Blocked — you will never match with this person again.');
   endCallUI();
 }
-function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins 🪙'); }
+function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
 
 renderGifts();
 initAuth();
