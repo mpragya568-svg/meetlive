@@ -118,8 +118,13 @@ wss.on('connection', (ws) => {
 
       case 'find':
         if (pairs.get(user.id)) break; // already in a call
-        if (!tryMatch(user) && !waiting.includes(user)) waiting.push(user);
-        send(ws, { type: 'searching' });
+        // Only say "searching" when no match was found. (Bug fix: the old
+        // code sent 'searching' even after a match, which kicked the second
+        // device back to the "looking for a stranger" screen mid-call.)
+        if (!tryMatch(user)) {
+          if (!waiting.includes(user)) waiting.push(user);
+          send(ws, { type: 'searching' });
+        }
         break;
 
       case 'cancel-find':
@@ -190,8 +195,10 @@ wss.on('connection', (ws) => {
 
       case 'next':
         endPair(user, 'next');
-        if (!tryMatch(user) && !waiting.includes(user)) waiting.push(user);
-        send(ws, { type: 'searching' });
+        if (!tryMatch(user)) {
+          if (!waiting.includes(user)) waiting.push(user);
+          send(ws, { type: 'searching' });
+        }
         break;
 
       case 'leave':

@@ -262,7 +262,11 @@ function handle(msg) {
       break;
     case 'online': $('onlineCount').textContent = msg.count; break;
     case 'coins': setCoins(msg.coins); break;
-    case 'searching': show('screen-searching'); break;
+    case 'searching':
+      // If we're already in a call, a late 'searching' must not kick us
+      // back to the waiting screen.
+      if (!peerId) show('screen-searching');
+      break;
     case 'matched':
       peerId = msg.peer.id;
       peerName = msg.peer.nickname || 'Stranger';
