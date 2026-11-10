@@ -137,7 +137,7 @@
   <div class="video-wrap">
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo" autoplay muted playsinline></video>
-    <div class="peer-label">🎥 <span id="peerName">Stranger</span></div>
+    <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span></div>
     <div class="call-top">
       <span class="pill">🪙 <b id="coinCountCall">0</b></span>
       <span class="pill hidden" id="trialPillCall">🎉 Gifts free</span>
@@ -197,6 +197,8 @@ let myId = null, myCoins = 0, myNickname = 'Guest', myGender = 'other';
 let peerId = null, peerName = 'Stranger';
 let micOn = true, camOn = true, filterOn = false;
 let freeTrial = false;
+let isInitiator = false;
+let pendingCandidates = []; // ICE candidates that arrived before the remote description was set
 
 const $ = (id) => document.getElementById(id);
 let toastTimer = null;
@@ -267,13 +269,23 @@ function handle(msg) {
       $('peerName').textContent = peerName;
       $('chatPeerName').textContent = peerName;
       $('chatLog').innerHTML = '';
+      isInitiator = !!msg.initiator;
+      pendingCandidates = [];
+      setConnState('connecting…');
       show('screen-call');
       startCall(msg.initiator);
       break;
     case 'offer': onOffer(msg.data); break;
-    case 'answer': if (pc) pc.setRemoteDescription(new RTCSessionDescription(msg.data)).catch(() => {}); break;
+    case 'answer':
+      if (pc) pc.setRemoteDescription(new RTCSessionDescription(msg.data)).then(flushCandidates).catch(() => {});
+      break;
     case 'ice':
-      if (pc && msg.data) pc.addIceCandidate(new RTCIceCandidate(msg.data)).catch(() => {});
+      if (pc && msg.data) {
+        // Candidates that arrive before the remote description is set would
+        // be dropped — queue them and add them once it is set.
+        if (pc.remoteDescription) pc.addIceCandidate(new RTCIceCandidate(msg.data)).catch(() => {});
+        else pendingCandidates.push(msg.data);
+      }
       break;
     case 'chat': addChatMsg(msg.nickname, msg.text, false); break;
     case 'gift':
@@ -296,13 +308,20 @@ function handle(msg) {
 }
 
 // ---------- WebRTC ----------
+// STUN lets the two phones find each other. TURN relays the video when a
+// strict network blocks a direct connection (common cause of one-way video).
+// These are Open Relay's free test servers — replace with a paid TURN
+// (Metered / Twilio / Cloudflare) before a big public launch.
 const RTC_CONFIG = { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
 ]};
 
 function closePC() {
   if (pc) { try { pc.close(); } catch {} pc = null; }
+  pendingCandidates = [];
   $('remoteVideo').srcObject = null;
 }
 
@@ -310,8 +329,26 @@ async function startCall(initiator) {
   closePC();
   pc = new RTCPeerConnection(RTC_CONFIG);
   if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  pc.ontrack = (e) => { if (e.streams[0]) $('remoteVideo').srcObject = e.streams[0]; };
+  pc.ontrack = (e) => {
+    if (e.streams[0]) {
+      const rv = $('remoteVideo');
+      rv.srcObject = e.streams[0];
+      // Some phones (notably iOS) won't start the video on their own —
+      // an explicit play() fixes the black-video / stuck-on-connecting case.
+      rv.play().catch(() => {});
+    }
+  };
   pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'ice', data: e.candidate }); };
+  pc.onconnectionstatechange = () => {
+    setConnState(pc.connectionState);
+    // If the connection fails, the initiator restarts ICE with a new offer.
+    if (pc.connectionState === 'failed' && isInitiator) {
+      pc.createOffer({ iceRestart: true })
+        .then((offer) => pc.setLocalDescription(offer))
+        .then(() => send({ type: 'offer', data: pc.localDescription }))
+        .catch(() => {});
+    }
+  };
   if (initiator) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -319,9 +356,26 @@ async function startCall(initiator) {
   }
 }
 
+function flushCandidates() {
+  if (!pc) return;
+  const queued = pendingCandidates;
+  pendingCandidates = [];
+  queued.forEach((c) => { try { pc.addIceCandidate(new RTCIceCandidate(c)); } catch {} });
+}
+
+function setConnState(state) {
+  const el = $('connState');
+  if (!el) return;
+  el.textContent =
+    state === 'connected' ? 'connected' :
+    state === 'failed' ? 'connection failed — retrying…' :
+    (state === 'connecting' || state === 'checking') ? 'connecting…' : state;
+}
+
 async function onOffer(offer) {
   await startCall(false);
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  flushCandidates();
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   send({ type: 'answer', data: answer });

@@ -67,8 +67,10 @@ two windows match each other on live video.
 2. **Share the link.** Random matching only works when 2+ people are online
    at the same time — strangers appear once people start using it.
 3. **Add a TURN server** for users on strict mobile networks (otherwise
-   some calls fail to connect). Free options: Open Relay / Metered free tier.
-   Add it to `RTC_CONFIG` in `client/index.html`.
+   some calls fail to connect, or video works only one way). A free test TURN
+   server (Open Relay) is already included in the app's `RTC_CONFIG` —
+   replace it with a paid TURN (Metered / Twilio / Cloudflare) for a big
+   public launch.
 4. **Moderation is your responsibility.** This ships with an 18+ gate,
    reporting and blocking, but a public random video chat needs real
    moderation: review `server/reports.log`, add automated nudity detection
