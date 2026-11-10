@@ -111,8 +111,9 @@
         <svg viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
         Sign in with Apple
       </button>
-      <div class="divider"><span>or continue as guest</span></div>
     </div>
+    <p id="signinHint" class="fine">Sign in with Google above to continue — guests can't use MeetLive.</p>
+    <p id="authMissing" class="fine hidden">Google sign-in is not set up on this server yet.</p>
     <div id="signedInBox" class="signedin hidden">
       <img id="signedInPhoto" class="hidden" alt="">
       <div id="signedInInitial" class="avatar hidden"></div>
@@ -120,9 +121,9 @@
       <button onclick="signOut()">Sign out</button>
     </div>
     <label>Your nickname</label>
-    <input type="text" id="nickname" maxlength="20" placeholder="e.g. Ravi">
+    <input type="text" id="nickname" maxlength="20" placeholder="e.g. Ravi" disabled>
     <label>I am</label>
-    <select id="gender">
+    <select id="gender" disabled>
       <option value="male">Male</option>
       <option value="female">Female</option>
       <option value="other">Prefer not to say</option>
@@ -133,7 +134,7 @@
       • No recording or screenshots of other people<br>
       • Break the rules and you will be reported and blocked
     </div>
-    <button class="btn" onclick="startProfile()">Turn on camera &amp; continue</button>
+    <button class="btn" id="continueBtn" onclick="startProfile()" disabled>Turn on camera &amp; continue</button>
     <p class="fine">Your video stays between you and the person you're matched with. Nothing is recorded or stored on our servers.</p>
   </div>
 </div>
@@ -232,6 +233,16 @@ let sessionToken = localStorage.getItem('meetlive_session') || '';
 let myProfile = null;
 try { myProfile = JSON.parse(localStorage.getItem('meetlive_profile') || 'null'); } catch {}
 let authConfig = { googleClientId: null, appleClientId: null };
+let authBlocked = false; // server rejected this connection (no valid Google session)
+
+// Google sign-in is required: the profile form stays locked until signed in.
+// Your nickname always comes from Google, so that field stays read-only.
+function setProfileFormEnabled(enabled) {
+  $('nickname').disabled = true;
+  $('gender').disabled = !enabled;
+  $('continueBtn').disabled = !enabled;
+  $('signinHint').classList.toggle('hidden', enabled);
+}
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -246,7 +257,12 @@ async function initAuth() {
   try {
     authConfig = await (await fetch('/config')).json();
   } catch { return; }
-  if (!authConfig.googleClientId && !authConfig.appleClientId) return; // buttons stay hidden; guest flow works as-is
+  if (!authConfig.googleClientId && !authConfig.appleClientId) {
+    // No sign-in configured: the app cannot start (Google sign-in is required).
+    $('signinHint').classList.add('hidden');
+    $('authMissing').classList.remove('hidden');
+    return;
+  }
   $('authBox').classList.remove('hidden');
   if (authConfig.googleClientId) {
     try {
@@ -314,6 +330,7 @@ function showSignedIn(profile) {
     $('signedInPhoto').classList.add('hidden');
   }
   $('nickname').value = profile.name.slice(0, 20);
+  setProfileFormEnabled(true);
 }
 
 function signOut() {
@@ -324,6 +341,7 @@ function signOut() {
   $('signedInBox').classList.add('hidden');
   if (authConfig.googleClientId || authConfig.appleClientId) $('authBox').classList.remove('hidden');
   $('nickname').value = '';
+  setProfileFormEnabled(false);
 }
 
 const $ = (id) => document.getElementById(id);
@@ -351,6 +369,10 @@ function ageYes() { show('screen-profile'); }
 function ageNo() { $('ageNoMsg').style.display = 'block'; }
 
 async function startProfile() {
+  if (!myProfile || !sessionToken) {
+    toast('Sign in with Google to continue.');
+    return;
+  }
   myNickname = ($('nickname').value || '').trim() || ('Guest' + Math.floor(1000 + Math.random() * 9000));
   myGender = $('gender').value;
   try {
@@ -366,16 +388,34 @@ async function startProfile() {
 }
 
 function connect() {
+  if (ws) {
+    ws.onclose = null; ws.onerror = null; ws.onmessage = null;
+    try { ws.close(); } catch {}
+  }
+  authBlocked = false;
   ws = new WebSocket(WS_URL);
   ws.onopen = () => send({ type: 'join', nickname: myNickname, gender: myGender, session: sessionToken || undefined });
   ws.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch {} };
-  ws.onclose = () => toast('Disconnected from server — check your connection and reload.');
+  ws.onclose = () => { if (!authBlocked) toast('Disconnected from server — check your connection and reload.'); };
   ws.onerror = () => toast('Could not reach the server.');
 }
 
 // ---------- signaling ----------
 function handle(msg) {
   switch (msg.type) {
+    case 'auth-required':
+      authBlocked = true;
+      // Session expired or invalid — clear it so the user can sign in again.
+      sessionToken = '';
+      myProfile = null;
+      localStorage.removeItem('meetlive_session');
+      localStorage.removeItem('meetlive_profile');
+      $('signedInBox').classList.add('hidden');
+      if (authConfig.googleClientId || authConfig.appleClientId) $('authBox').classList.remove('hidden');
+      setProfileFormEnabled(false);
+      toast(msg.message || 'Sign in with Google to use MeetLive.');
+      show('screen-profile');
+      break;
     case 'welcome':
       myId = msg.id; setCoins(msg.coins);
       if (msg.freeTrial) {
@@ -608,6 +648,7 @@ function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins 🪙
 
 renderGifts();
 initAuth();
+setProfileFormEnabled(false);
 show('screen-age');
 </script>
 </body>

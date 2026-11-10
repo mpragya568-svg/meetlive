@@ -104,10 +104,13 @@ meetlive-chamet-clone/
 
 ## Sign in with Google / Apple
 
-The profile screen shows **"Sign in with Google"** and **"Sign in with
-Apple"** buttons — but only after you add the credentials below. Until then
-the buttons stay hidden and everyone signs in as a guest (nickname only),
-exactly as before. Sign-in is optional, never required.
+Google sign-in is **required** to use MeetLive — without it the app will
+not open the lobby or start matching. There is no guest mode: the profile
+screen shows a **"Sign in with Google"** button (and **"Sign in with
+Apple"** once Apple is set up), the profile form stays locked until you
+sign in, and the server itself rejects any connection without a valid
+Google session, so the requirement cannot be bypassed from the browser.
+The buttons only appear after you add the credentials below.
 
 A signed-in user gets their real name (and Google photo) as their profile,
 and a **✓** badge next to their name on the other person's screen.

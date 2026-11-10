@@ -221,18 +221,21 @@ wss.on('connection', (ws) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     const partner = pairs.get(user.id);
+    // Google sign-in is required: only 'join' is accepted until the user
+    // has a verified Google session.
+    if (msg.type !== 'join' && (!user.verified || user.verified.provider !== 'google')) return;
 
     switch (msg.type) {
       case 'join': {
-        // A valid sign-in session attaches the verified profile; otherwise
-        // the typed nickname is used (guest).
+        // Google sign-in is required: no guest joins.
         const profile = getSession(msg.session);
-        if (profile) {
-          user.verified = profile;
-          user.nickname = profile.name.slice(0, 20);
-        } else {
-          user.nickname = String(msg.nickname || 'Guest').slice(0, 20);
+        if (!profile || profile.provider !== 'google') {
+          send(ws, { type: 'auth-required', message: 'Sign in with Google to use MeetLive.' });
+          setTimeout(() => { try { ws.close(); } catch {} }, 100);
+          break;
         }
+        user.verified = profile;
+        user.nickname = profile.name.slice(0, 20);
         user.gender = ['male', 'female', 'other'].includes(msg.gender) ? msg.gender : 'other';
         break;
       }
