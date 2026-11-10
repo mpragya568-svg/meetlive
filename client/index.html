@@ -59,6 +59,13 @@
   .slot-pip { top: 14px; right: 14px; width: 108px; height: 144px; border-radius: 14px; border: 2px solid #fff; z-index: 3; cursor: grab; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
   .slot-pip:active { cursor: grabbing; }
   .slot video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+  /* Selfie mirror: your OWN preview is flipped left-right (like looking in
+     a mirror) so your left hand appears on the left of your own picture.
+     Only ever applied to the LOCAL videos, never the remote one — the
+     other person sees you the correct way round, as a real person facing
+     them. The transform sits on the <video> itself, so swapping slots
+     never changes orientation, and the stream sent to the peer is untouched. */
+  .mirrored { transform: scaleX(-1); }
   .video-wrap.swapped .slot-main { top: 14px; right: 14px; left: auto; width: 108px; height: 144px; border-radius: 14px; border: 2px solid #fff; z-index: 3; cursor: grab; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
   .video-wrap.swapped .slot-pip { top: 0; left: 0; right: auto; width: 100%; height: 100%; border: none; border-radius: 0; z-index: 1; cursor: default; box-shadow: none; }
   /* Camera-off wallpaper (like Messenger): branded gradient + avatar + name, never a black screen. */
@@ -273,7 +280,7 @@
     <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
-  <video class="preview" id="localVideoLobby" autoplay muted playsinline></video>
+  <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
   <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Matching</button>
   <p style="color:#aaa;font-size:14px;text-align:center">Tap Start Matching to meet a random stranger<br>on live video</p>
   <p class="fine">Tip: open this page in a second browser window to test matching — you need 2 people online to get a match.</p>
@@ -301,7 +308,7 @@
       </div>
     </div>
     <div class="slot slot-pip" id="slotPip">
-      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="localVideo" class="mirrored" autoplay muted playsinline></video>
       <div class="cam-off hidden" id="localCamOff">
         <img id="localCamOffImg" class="avatar-img hidden" alt="">
         <div class="avatar" id="localCamOffAvatar">Y</div>
@@ -566,6 +573,15 @@ async function startProfile() {
   }
   $('localVideo').srcObject = localStream;
   $('localVideoLobby').srcObject = localStream;
+  // Mirror the self-view only if the front (selfie) camera is actually the
+  // one in use — the back camera shows the world as it is, unmirrored.
+  const facing = localStream.getVideoTracks()[0]?.getSettings?.().facingMode;
+  if (facing) {
+    facingMode = facing;
+    const mirror = facing === 'user';
+    $('localVideo').classList.toggle('mirrored', mirror);
+    $('localVideoLobby').classList.toggle('mirrored', mirror);
+  }
   loadMyPhoto();
   connect();
   show('screen-lobby');
@@ -997,6 +1013,11 @@ async function switchCamera() {
     $('localVideoLobby').srcObject = localStream;
     ns.getTracks().forEach(t => { if (t !== newTrack) t.stop(); });
     facingMode = next;
+    // Front camera = selfie view (mirrored, like a mirror).
+    // Back camera = the world as it is (not mirrored).
+    const mirror = next === 'user';
+    $('localVideo').classList.toggle('mirrored', mirror);
+    $('localVideoLobby').classList.toggle('mirrored', mirror);
     toast(next === 'environment' ? 'Back camera' : 'Front camera');
   } catch (e) {
     toast('This device cannot switch cameras.');
