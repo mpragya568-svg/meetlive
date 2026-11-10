@@ -52,15 +52,37 @@
   .video-wrap { position: relative; width: 100%; height: 100vh; height: 100dvh; background: #000; overflow: hidden; }
   #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
   #localVideo { position: absolute; top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; border: 2px solid #fff; background: #000; z-index: 3; }
-  #localVideo.beauty { filter: brightness(1.12) saturate(1.15) blur(0.4px); }
+  /* Camera-off wallpaper (like Messenger): branded gradient + avatar + name, never a black screen. */
+  .cam-off { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(600px 400px at 20% 0%, rgba(255,77,141,.35), transparent 60%), radial-gradient(500px 400px at 90% 100%, rgba(139,92,246,.4), transparent 60%), #12122a; text-align: center; }
+  .cam-off .avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,77,141,.4); }
+  .cam-off .name { font-size: 16px; font-weight: 700; }
+  .cam-off .sub { font-size: 12px; color: #a5a5b8; }
+  #remoteCamOff { inset: 0; z-index: 2; }
+  #localCamOff { top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; border-radius: 14px; border: 2px solid rgba(255,255,255,.6); z-index: 4; gap: 4px; }
+  #localCamOff .avatar { width: 40px; height: 40px; font-size: 18px; }
+  #localCamOff .name { font-size: 11px; }
+  #localCamOff .sub { display: none; }
+  /* Filter picker strip (horizontal, above the buttons). */
+  .filter-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: none; }
+  .filter-strip::-webkit-scrollbar { display: none; }
+  .filter-chip { flex: 0 0 auto; padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); font-family: inherit; }
+  .filter-chip.active { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); border-color: transparent; }
+  /* Gift popup panel (opens from the Gift button). */
+  .gift-panel { background: rgba(20,20,40,.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 12px 12px 6px; margin-bottom: 12px; }
+  .gift-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .gift-panel-head b { font-size: 15px; }
+  .gift-panel-head button { background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer; padding: 4px 8px; }
   .match-btn:active { transform: scale(0.96); }
   .peer-label { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(10,10,20,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.14); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
   .call-top { position: absolute; top: 76px; left: 14px; z-index: 3; display: flex; gap: 8px; }
   .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
   .ctrl-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); font-size: 24px; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); transition: transform .15s; }
+  .ctrl-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ctrl-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,0,0,.6); white-space: nowrap; }
+  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); font-size: 24px; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: transform .15s; }
   .ctrl:hover { transform: scale(1.06); }
   .ctrl.off { background: #ef4444; }
+  .ctrl.active { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); border-color: transparent; }
   .ctrl.wide { width: auto; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 700; }
   .ctrl.next { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); box-shadow: 0 8px 22px rgba(255,77,141,.4); }
   .ctrl.end { background: #ef4444; }
@@ -74,12 +96,13 @@
   .coin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: linear-gradient(135deg, #ffe08a, #f59e0b); margin-right: 4px; }
   .gift .cost { font-size: 11px; color: #ffd166; font-weight: 700; }
   /* chat drawer */
-  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: rgba(20,20,40,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.1); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
+  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: rgba(12,12,28,.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.1); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
   #chatLog { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
-  .msg { max-width: 80%; padding: 10px 13px; border-radius: 14px; font-size: 15px; line-height: 1.4; background: #262640; align-self: flex-start; }
+  .msg { max-width: 80%; padding: 10px 13px; border-radius: 14px; font-size: 15px; line-height: 1.4; background: rgba(255,255,255,.12); align-self: flex-start; }
   .msg.me { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); align-self: flex-end; }
   .msg .who { display: block; font-size: 11px; opacity: .7; margin-bottom: 2px; }
   .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row input { flex: 1; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
   .chat-input-row input { flex: 1; }
   /* gift fx + toast */
   #giftFx { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: flex; align-items: center; justify-content: center; }
@@ -213,7 +236,17 @@
 <div class="screen hidden" id="screen-call">
   <div class="video-wrap">
     <video id="remoteVideo" autoplay playsinline></video>
+    <div class="cam-off hidden" id="remoteCamOff">
+      <svg viewBox="0 0 48 48" style="width:34px;height:34px" aria-hidden="true"><use href="#logoMark"/></svg>
+      <div class="avatar" id="remoteCamOffAvatar">?</div>
+      <div class="name" id="remoteCamOffName">Stranger</div>
+      <div class="sub">Camera off</div>
+    </div>
     <video id="localVideo" autoplay muted playsinline></video>
+    <div class="cam-off hidden" id="localCamOff">
+      <div class="avatar" id="localCamOffAvatar">Y</div>
+      <div class="name">You</div>
+    </div>
     <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span></div>
     <div class="call-top">
       <span class="pill"><span class="coin-dot"></span><b id="coinCountCall">0</b></span>
@@ -221,14 +254,17 @@
     </div>
     <div id="giftFx"></div>
     <div class="controls">
-      <div class="gift-tray" id="giftTray"></div>
+      <div class="filter-strip hidden" id="filterStrip"></div>
+      <div class="gift-panel hidden" id="giftPanel">
+        <div class="gift-panel-head"><b>🎁 Send a gift</b><button onclick="toggleGiftPanel()">✕</button></div>
+        <div class="gift-tray" id="giftTray"></div>
+      </div>
       <div class="ctrl-row">
-        <button class="ctrl" id="micBtn" onclick="toggleMic()" title="Mute mic">🎙️</button>
-        <button class="ctrl" id="camBtn" onclick="toggleCam()" title="Camera on/off">📷</button>
-        <button class="ctrl" onclick="toggleFilter()" title="Beauty filter">✨</button>
-        <button class="ctrl" onclick="toggleChat()" title="Chat">💬</button>
-        <button class="ctrl" onclick="reportPeer()" title="Report">🚩</button>
-        <button class="ctrl" onclick="blockPeer()" title="Block">🚫</button>
+        <div class="ctrl-wrap"><button class="ctrl" id="micBtn" onclick="toggleMic()">🎙️</button><span class="ctrl-label">Mic</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="camBtn" onclick="toggleCam()">📷</button><span class="ctrl-label">Camera</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="filterBtn" onclick="toggleFilterStrip()">✨</button><span class="ctrl-label" id="filterLabel">Filter</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" onclick="toggleGiftPanel()">🎁</button><span class="ctrl-label">Gift</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()">💬</button><span class="ctrl-label">Chat</span></div>
       </div>
       <div class="ctrl-row">
         <button class="ctrl wide next" onclick="nextStranger()">Next ➜</button>
@@ -279,7 +315,7 @@ const GIFT_ICONS = {
 let ws = null, pc = null, localStream = null;
 let myId = null, myCoins = 0, myNickname = 'Guest', myGender = 'other';
 let peerId = null, peerName = 'Stranger';
-let micOn = true, camOn = true, filterOn = false;
+let micOn = true, camOn = true;
 let freeTrial = false;
 let isInitiator = false;
 let pendingCandidates = []; // ICE candidates that arrived before the remote description was set
@@ -430,6 +466,7 @@ async function startProfile() {
     return;
   }
   myNickname = ($('nickname').value || '').trim() || ('Guest' + Math.floor(1000 + Math.random() * 9000));
+  $('localCamOffAvatar').textContent = myNickname.charAt(0).toUpperCase();
   myGender = $('gender').value;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
@@ -495,6 +532,9 @@ function handle(msg) {
       $('peerName').textContent = peerName + (msg.peer.verified ? ' ✓' : '');
       $('chatPeerName').textContent = peerName;
       $('chatLog').innerHTML = '';
+      $('remoteCamOff').classList.add('hidden');
+      $('remoteCamOffName').textContent = peerName;
+      $('remoteCamOffAvatar').textContent = peerName.charAt(0).toUpperCase();
       isInitiator = !!msg.initiator;
       pendingCandidates = [];
       setConnState('connecting…');
@@ -513,7 +553,21 @@ function handle(msg) {
         else pendingCandidates.push(msg.data);
       }
       break;
-    case 'chat': addChatMsg(msg.nickname, msg.text, false); break;
+    case 'chat':
+      // A message pops up on its own — the other person never has to
+      // press the Chat button to see it.
+      addChatMsg(msg.nickname, msg.text, false);
+      $('chatDrawer').classList.remove('hidden');
+      break;
+    case 'cam-state': {
+      const off = msg.on === false;
+      $('remoteCamOff').classList.toggle('hidden', !off);
+      if (off) {
+        $('remoteCamOffName').textContent = peerName;
+        $('remoteCamOffAvatar').textContent = (peerName || '?').charAt(0).toUpperCase();
+      }
+      break;
+    }
     case 'gift':
       giftFx(msg.gift, msg.nickname + ' sent you a ' + msg.name + '!');
       toast(msg.nickname + ' sent you a ' + msg.name);
@@ -549,6 +603,7 @@ function closePC() {
   if (pc) { try { pc.close(); } catch {} pc = null; }
   pendingCandidates = [];
   $('remoteVideo').srcObject = null;
+  stopFilterPipeline();
 }
 
 async function startCall(initiator) {
@@ -580,6 +635,12 @@ async function startCall(initiator) {
     await pc.setLocalDescription(offer);
     send({ type: 'offer', data: offer });
   }
+  // Keep the camera-off wallpaper in sync and re-apply an active filter
+  // to this call's outgoing video.
+  $('localCamOff').classList.toggle('hidden', camOn);
+  $('remoteCamOff').classList.add('hidden');
+  if (!camOn) send({ type: 'cam-state', on: false });
+  if (currentFilter !== 0) startFilterPipeline();
 }
 
 function flushCandidates() {
@@ -611,6 +672,9 @@ function endCallUI() {
   closePC();
   peerId = null;
   $('chatDrawer').classList.add('hidden');
+  $('giftPanel').classList.add('hidden');
+  $('filterStrip').classList.add('hidden');
+  $('remoteCamOff').classList.add('hidden');
   show('screen-lobby');
 }
 
@@ -631,11 +695,100 @@ function toggleCam() {
   if (localStream) localStream.getVideoTracks().forEach(t => t.enabled = camOn);
   $('camBtn').classList.toggle('off', !camOn);
   $('camBtn').textContent = camOn ? '📷' : '📵';
+  // Never a black screen: show the branded wallpaper instead.
+  $('localCamOff').classList.toggle('hidden', camOn);
+  send({ type: 'cam-state', on: camOn });
 }
-function toggleFilter() {
-  filterOn = !filterOn;
-  $('localVideo').classList.toggle('beauty', filterOn);
-  toast(filterOn ? 'Beauty filter on ✨' : 'Beauty filter off');
+// ---------- beauty filters ----------
+// 5 filters made for girls. The old toggle only changed YOUR preview (a CSS
+// class on your own video) — the other person saw the raw camera, which is
+// why it looked like it did nothing. Now the filter is also painted onto
+// the video sent to the other person through a canvas, so they see it too.
+const FILTERS = [
+  { name: 'None',    css: '' },
+  { name: 'Natural', css: 'brightness(1.06) saturate(1.12) contrast(1.02)' },
+  { name: 'Glow',    css: 'brightness(1.14) saturate(1.28) contrast(0.97)' },
+  { name: 'Warm',    css: 'sepia(0.28) saturate(1.35) brightness(1.06)' },
+  { name: 'Rosy',    css: 'sepia(0.18) saturate(1.45) hue-rotate(-12deg) brightness(1.08)' },
+  { name: 'Cool',    css: 'hue-rotate(12deg) saturate(1.25) brightness(1.06)' },
+];
+let currentFilter = 0;
+let filterCanvas = null, filterCtx = null, filterStream = null, filterRAF = 0;
+// Canvas filtering needs ctx.filter + canvas.captureStream; on older
+// browsers the filter still shows on your own preview, just not to the peer.
+const canvasFilterOK = (() => {
+  try {
+    const c = document.createElement('canvas');
+    return typeof c.captureStream === 'function' && 'filter' in c.getContext('2d');
+  } catch { return false; }
+})();
+
+function renderFilterStrip() {
+  const strip = $('filterStrip');
+  strip.innerHTML = '';
+  FILTERS.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.className = 'filter-chip' + (i === currentFilter ? ' active' : '');
+    b.textContent = f.name;
+    b.onclick = () => applyFilter(i);
+    strip.appendChild(b);
+  });
+}
+function toggleFilterStrip() {
+  $('filterStrip').classList.toggle('hidden');
+  $('giftPanel').classList.add('hidden');
+}
+function toggleGiftPanel() {
+  $('giftPanel').classList.toggle('hidden');
+  $('filterStrip').classList.add('hidden');
+}
+function applyFilter(i) {
+  currentFilter = i;
+  const f = FILTERS[i];
+  // Your preview shows the filter right away.
+  ['localVideo', 'localVideoLobby'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.filter = f.css;
+  });
+  renderFilterStrip();
+  $('filterBtn').classList.toggle('active', i !== 0);
+  $('filterLabel').textContent = i === 0 ? 'Filter' : f.name;
+  if (i === 0) stopFilterPipeline();
+  else startFilterPipeline();
+}
+function startFilterPipeline() {
+  if (!canvasFilterOK || !localStream || currentFilter === 0) return;
+  if (!filterCanvas) {
+    filterCanvas = document.createElement('canvas');
+    filterCtx = filterCanvas.getContext('2d');
+    filterStream = filterCanvas.captureStream(30);
+  }
+  const videoSender = pc && pc.getSenders().find(s => s.track && s.track.kind === 'video');
+  if (videoSender && filterStream) {
+    const ft = filterStream.getVideoTracks()[0];
+    if (ft && videoSender.track !== ft) videoSender.replaceTrack(ft).catch(() => {});
+  }
+  if (!filterRAF) filterRAF = requestAnimationFrame(filterDraw);
+}
+function filterDraw() {
+  filterRAF = 0;
+  const v = $('localVideo');
+  if (filterCtx && v && v.videoWidth) {
+    if (filterCanvas.width !== v.videoWidth) {
+      filterCanvas.width = v.videoWidth;
+      filterCanvas.height = v.videoHeight;
+    }
+    filterCtx.filter = FILTERS[currentFilter].css;
+    filterCtx.drawImage(v, 0, 0, filterCanvas.width, filterCanvas.height);
+  }
+  if (currentFilter !== 0) filterRAF = requestAnimationFrame(filterDraw);
+}
+function stopFilterPipeline() {
+  if (filterRAF) { cancelAnimationFrame(filterRAF); filterRAF = 0; }
+  const videoSender = pc && pc.getSenders().find(s => s.track && s.track.kind === 'video');
+  const orig = localStream && localStream.getVideoTracks()[0];
+  if (videoSender && orig && videoSender.track !== orig) videoSender.replaceTrack(orig).catch(() => {});
+  if (filterStream) { filterStream.getTracks().forEach(t => t.stop()); filterStream = null; filterCanvas = null; filterCtx = null; }
 }
 function toggleChat() { $('chatDrawer').classList.toggle('hidden'); }
 
@@ -703,6 +856,7 @@ function blockPeer() {
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
 
 renderGifts();
+renderFilterStrip();
 initAuth();
 setProfileFormEnabled(false);
 show('screen-age');

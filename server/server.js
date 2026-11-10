@@ -272,6 +272,12 @@ wss.on('connection', (ws) => {
         }
         break;
 
+      // Camera on/off — relayed so the partner can show a wallpaper
+      // placeholder instead of a black video.
+      case 'cam-state':
+        if (partner) send(partner.ws, { type: 'cam-state', from: user.id, on: msg.on === true });
+        break;
+
       case 'gift': {
         const gift = GIFTS[msg.gift];
         if (!gift || !partner) break;
