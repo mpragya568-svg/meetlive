@@ -101,3 +101,72 @@ meetlive-chamet-clone/
 - **Live streaming**: same WebRTC setup, one-to-many instead of one-to-one.
 - **Mobile app**: wrap the client with Capacitor, or rebuild it in Flutter /
   React Native using the same server API.
+
+## Sign in with Google / Apple
+
+The profile screen shows **"Sign in with Google"** and **"Sign in with
+Apple"** buttons — but only after you add the credentials below. Until then
+the buttons stay hidden and everyone signs in as a guest (nickname only),
+exactly as before. Sign-in is optional, never required.
+
+A signed-in user gets their real name (and Google photo) as their profile,
+and a **✓** badge next to their name on the other person's screen.
+The server verifies every sign-in itself (Google ID token via Google,
+Apple code + id_token via Apple) before trusting it — the browser never
+decides who someone is.
+
+### Google (free)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) →
+   create a project (any name) → **APIs & Services → Credentials**.
+2. **Configure consent screen** (External, fill in the app name) — needed
+   before you can create a client.
+3. **Create Credentials → OAuth client ID → Web application**.
+4. Under **Authorized JavaScript origins** add your site URL, e.g.
+   `https://meetlive-3cgk.onrender.com` (for local testing also add
+   `http://localhost:3000`).
+5. Copy the **Client ID** (looks like `…apps.googleusercontent.com`).
+6. On Render: your service → **Environment** → add
+   `GOOGLE_CLIENT_ID` = that Client ID → **Save** (Render redeploys).
+7. Refresh the site — the Google button appears on the profile screen.
+
+### Apple (needs a paid Apple Developer account — $99/year)
+
+1. Join the [Apple Developer Program](https://developer.apple.com/programs/)
+   ($99/year) — Sign in with Apple for the web is not available on a free
+   account.
+2. **Certificates, Identifiers & Profiles → Identifiers → + → Services IDs**
+   → create one (e.g. `com.meetlive.app`) and check **Sign in with Apple**.
+3. Click **Configure** on it → set **Primary App ID** to your App ID (create
+   one if needed) → under **Website URLs** add your domain
+   `meetlive-3cgk.onrender.com` and **Return URL**
+   `https://meetlive-3cgk.onrender.com` → Save. Apple will ask you to
+   verify the domain (it gives you a file to host or a DNS record).
+4. **Keys → +** → check **Sign in with Apple** → Configure → pick the
+   Primary App ID → Save → **Download** the `.p8` key file (only once!)
+   and note the **Key ID** shown.
+5. Note your **Team ID** (top-right of the developer portal, or in
+   Membership details).
+6. On Render: your service → **Environment** → add these four variables
+   and **Save**:
+   - `APPLE_CLIENT_ID` = the Services ID (e.g. `com.meetlive.app`)
+   - `APPLE_TEAM_ID` = your Team ID
+   - `APPLE_KEY_ID` = the Key ID from step 4
+   - `APPLE_PRIVATE_KEY` = the whole contents of the `.p8` file
+     (paste it with its `-----BEGIN PRIVATE KEY-----` lines; if it shows
+     up as one line, keep the `\n` characters — the server converts them)
+7. Refresh the site — the Apple button appears on the profile screen.
+
+### How it works (for developers)
+
+- `GET /config` returns the public client IDs so the page knows which
+  buttons to show.
+- `POST /auth/google { idToken }` verifies the token with Google's
+  tokeninfo endpoint and returns a 24h session token + profile.
+- `POST /auth/apple { code, user }` exchanges the code with Apple using a
+  signed ES256 `client_secret` JWT, then verifies Apple's `id_token`
+  (RS256) against Apple's JWKS. No extra npm packages — Node's built-in
+  `crypto` does the signing and verification.
+- The browser sends the session token in its `join` message; the server
+  attaches the verified profile to the user and uses the verified name.
+  Sessions live in memory, so a server restart signs everyone out.

@@ -68,6 +68,19 @@
   #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: #262640; border: 1px solid #3a3a5e; color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
   .fine { font-size: 12px; color: #777; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
+  .btn.apple-btn { background: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn.apple-btn svg { width: 18px; height: 18px; fill: #fff; flex: 0 0 auto; }
+  #googleBtn { display: flex; justify-content: center; }
+  #googleBtn > div { width: 100% !important; }
+  .divider { display: flex; align-items: center; gap: 10px; color: #777; font-size: 12px; margin: 16px 0 4px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2a2a44; }
+  .signedin { display: flex; align-items: center; gap: 12px; background: #12122a; border: 1px solid #2a2a44; border-radius: 14px; padding: 12px; margin-bottom: 6px; }
+  .signedin img, .signedin .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #333; flex: 0 0 auto; }
+  .signedin .avatar { display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); }
+  .signedin .who { flex: 1; min-width: 0; }
+  .signedin .who b { display: block; font-size: 15px; }
+  .signedin .who span { font-size: 12px; color: #aaa; word-break: break-all; }
+  .signedin button { background: none; border: none; color: #ff4d8d; font-size: 13px; cursor: pointer; flex: 0 0 auto; }
 </style>
 </head>
 <body>
@@ -92,6 +105,20 @@
   <h1 class="logo">MeetLive</h1>
   <p class="tagline">Set up your profile to start matching</p>
   <div class="card">
+    <div id="authBox" class="hidden">
+      <div id="googleBtn"></div>
+      <button class="btn apple-btn hidden" id="appleBtn" onclick="signInWithApple()">
+        <svg viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+        Sign in with Apple
+      </button>
+      <div class="divider"><span>or continue as guest</span></div>
+    </div>
+    <div id="signedInBox" class="signedin hidden">
+      <img id="signedInPhoto" class="hidden" alt="">
+      <div id="signedInInitial" class="avatar hidden"></div>
+      <div class="who"><b id="signedInName"></b><span id="signedInEmail"></span></div>
+      <button onclick="signOut()">Sign out</button>
+    </div>
     <label>Your nickname</label>
     <input type="text" id="nickname" maxlength="20" placeholder="e.g. Ravi">
     <label>I am</label>
@@ -200,6 +227,105 @@ let freeTrial = false;
 let isInitiator = false;
 let pendingCandidates = []; // ICE candidates that arrived before the remote description was set
 
+// ---------- sign-in ----------
+let sessionToken = localStorage.getItem('meetlive_session') || '';
+let myProfile = null;
+try { myProfile = JSON.parse(localStorage.getItem('meetlive_profile') || 'null'); } catch {}
+let authConfig = { googleClientId: null, appleClientId: null };
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.defer = true;
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function initAuth() {
+  try {
+    authConfig = await (await fetch('/config')).json();
+  } catch { return; }
+  if (!authConfig.googleClientId && !authConfig.appleClientId) return; // buttons stay hidden; guest flow works as-is
+  $('authBox').classList.remove('hidden');
+  if (authConfig.googleClientId) {
+    try {
+      await loadScript('https://accounts.google.com/gsi/client');
+      google.accounts.id.initialize({ client_id: authConfig.googleClientId, callback: onGoogleSignIn });
+      google.accounts.id.renderButton($('googleBtn'), { theme: 'outline', size: 'large', width: 320, text: 'signin_with' });
+    } catch {}
+  }
+  if (authConfig.appleClientId) {
+    try {
+      await loadScript('https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js');
+      AppleID.auth.init({ clientId: authConfig.appleClientId, scope: 'name email', redirectURI: location.origin, usePopup: true });
+      $('appleBtn').classList.remove('hidden');
+    } catch {}
+  }
+  restoreSignedIn();
+}
+
+function restoreSignedIn() {
+  if (myProfile && sessionToken) showSignedIn(myProfile);
+}
+
+async function onGoogleSignIn(response) {
+  await finishSignIn('/auth/google', { idToken: response.credential });
+}
+
+async function signInWithApple() {
+  try {
+    const res = await AppleID.auth.signIn();
+    await finishSignIn('/auth/apple', { code: res.authorization.code, user: res.user || null });
+  } catch (e) {
+    if (e && e.error === 'popup_closed_by_user') return;
+    toast('Apple sign-in failed — please try again.');
+  }
+}
+
+async function finishSignIn(url, body) {
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok || !data.ok) { toast(data.error || 'Sign-in failed.'); return; }
+    sessionToken = data.session;
+    myProfile = data.profile;
+    localStorage.setItem('meetlive_session', sessionToken);
+    localStorage.setItem('meetlive_profile', JSON.stringify(myProfile));
+    showSignedIn(myProfile);
+    toast('Signed in as ' + myProfile.name);
+  } catch {
+    toast('Sign-in failed — check your connection.');
+  }
+}
+
+function showSignedIn(profile) {
+  $('authBox').classList.add('hidden');
+  $('signedInBox').classList.remove('hidden');
+  $('signedInName').textContent = profile.name + (profile.provider === 'google' ? ' (Google)' : ' (Apple)');
+  $('signedInEmail').textContent = profile.email || '';
+  if (profile.picture) {
+    $('signedInPhoto').src = profile.picture;
+    $('signedInPhoto').classList.remove('hidden');
+    $('signedInInitial').classList.add('hidden');
+  } else {
+    $('signedInInitial').textContent = (profile.name || 'M')[0].toUpperCase();
+    $('signedInInitial').classList.remove('hidden');
+    $('signedInPhoto').classList.add('hidden');
+  }
+  $('nickname').value = profile.name.slice(0, 20);
+}
+
+function signOut() {
+  sessionToken = '';
+  myProfile = null;
+  localStorage.removeItem('meetlive_session');
+  localStorage.removeItem('meetlive_profile');
+  $('signedInBox').classList.add('hidden');
+  if (authConfig.googleClientId || authConfig.appleClientId) $('authBox').classList.remove('hidden');
+  $('nickname').value = '';
+}
+
 const $ = (id) => document.getElementById(id);
 let toastTimer = null;
 function toast(msg) {
@@ -241,7 +367,7 @@ async function startProfile() {
 
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => send({ type: 'join', nickname: myNickname, gender: myGender });
+  ws.onopen = () => send({ type: 'join', nickname: myNickname, gender: myGender, session: sessionToken || undefined });
   ws.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch {} };
   ws.onclose = () => toast('Disconnected from server — check your connection and reload.');
   ws.onerror = () => toast('Could not reach the server.');
@@ -270,7 +396,7 @@ function handle(msg) {
     case 'matched':
       peerId = msg.peer.id;
       peerName = msg.peer.nickname || 'Stranger';
-      $('peerName').textContent = peerName;
+      $('peerName').textContent = peerName + (msg.peer.verified ? ' ✓' : '');
       $('chatPeerName').textContent = peerName;
       $('chatLog').innerHTML = '';
       isInitiator = !!msg.initiator;
@@ -481,6 +607,7 @@ function blockPeer() {
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins 🪙'); }
 
 renderGifts();
+initAuth();
 show('screen-age');
 </script>
 </body>
