@@ -281,6 +281,13 @@ wss.on('connection', (ws) => {
         if (partner) send(partner.ws, { type: 'cam-state', from: user.id, on: msg.on === true });
         break;
 
+      // Floating reaction — relayed so it floats up on the partner's screen.
+      case 'reaction': {
+        const ok = ['❤️', '🔥', '😂', '😍', '👏', '✨'];
+        if (partner) send(partner.ws, { type: 'reaction', from: user.id, nickname: user.nickname, emoji: ok.includes(msg.emoji) ? msg.emoji : '❤️' });
+        break;
+      }
+
       // Beauty filter — relayed so the partner renders YOUR filter on
       // their screen (works on every phone, unlike baking it into the
       // sent video, which older browsers can't do).

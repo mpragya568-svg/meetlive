@@ -50,36 +50,48 @@
   /* call screen */
   #screen-call { padding: 0; justify-content: flex-start; }
   .video-wrap { position: relative; width: 100%; height: 100vh; height: 100dvh; background: #000; overflow: hidden; }
-  #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
-  #localVideo { position: absolute; top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; border: 2px solid #fff; background: #000; z-index: 3; }
+  /* WhatsApp-style slots: one main video, one floating PiP. Swapping moves
+     the slots (never the streams), with a smooth morph. The old approach
+     toggled classes on the videos themselves and left the small video
+     108px wide but full-height — that is why the swap looked broken. */
+  .slot { position: absolute; overflow: hidden; background: #000; transition: top .4s cubic-bezier(.32,.72,.35,1), left .4s cubic-bezier(.32,.72,.35,1), right .4s cubic-bezier(.32,.72,.35,1), width .4s cubic-bezier(.32,.72,.35,1), height .4s cubic-bezier(.32,.72,.35,1), border-radius .4s; touch-action: none; }
+  .slot-main { top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+  .slot-pip { top: 14px; right: 14px; width: 108px; height: 144px; border-radius: 14px; border: 2px solid #fff; z-index: 3; cursor: grab; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+  .slot-pip:active { cursor: grabbing; }
+  .slot video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+  .video-wrap.swapped .slot-main { top: 14px; right: 14px; left: auto; width: 108px; height: 144px; border-radius: 14px; border: 2px solid #fff; z-index: 3; cursor: grab; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+  .video-wrap.swapped .slot-pip { top: 0; left: 0; right: auto; width: 100%; height: 100%; border: none; border-radius: 0; z-index: 1; cursor: default; box-shadow: none; }
   /* Camera-off wallpaper (like Messenger): branded gradient + avatar + name, never a black screen. */
-  .cam-off { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(600px 400px at 20% 0%, rgba(255,77,141,.35), transparent 60%), radial-gradient(500px 400px at 90% 100%, rgba(139,92,246,.4), transparent 60%), #12122a; text-align: center; }
+  .cam-off { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(600px 400px at 20% 0%, rgba(255,77,141,.35), transparent 60%), radial-gradient(500px 400px at 90% 100%, rgba(139,92,246,.4), transparent 60%), #12122a; text-align: center; }
   .cam-off .avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; box-shadow: 0 8px 24px rgba(255,77,141,.4); }
   .cam-off .avatar-img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; box-shadow: 0 8px 24px rgba(255,77,141,.4); }
   .cam-off .name { font-size: 16px; font-weight: 700; }
   .cam-off .sub { font-size: 12px; color: #a5a5b8; }
-  #remoteCamOff { inset: 0; z-index: 2; }
-  #localCamOff { top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; border-radius: 14px; border: 2px solid rgba(255,255,255,.6); z-index: 4; gap: 4px; }
-  #localCamOff .avatar { width: 40px; height: 40px; font-size: 18px; }
-  #localCamOff .avatar-img { width: 40px; height: 40px; }
-  #localCamOff .name { font-size: 11px; }
-  #localCamOff .sub { display: none; }
-  /* Tap your own small picture to swap — like WhatsApp, the small video becomes big. */
-  #screen-call.swapped #localVideo { top: 0; left: 0; right: auto; width: 100%; height: 100%; border: none; border-radius: 0; z-index: 1; }
-  #screen-call.swapped #remoteVideo { position: absolute; top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; border: 2px solid #fff; z-index: 3; }
-  #screen-call.swapped #remoteCamOff { top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; inset: auto; border-radius: 14px; border: 2px solid rgba(255,255,255,.6); z-index: 4; gap: 4px; }
-  #screen-call.swapped #remoteCamOff .avatar, #screen-call.swapped #remoteCamOff .avatar-img { width: 40px; height: 40px; font-size: 18px; }
-  #screen-call.swapped #remoteCamOff .name { font-size: 11px; }
-  #screen-call.swapped #remoteCamOff .sub { display: none; }
-  #screen-call.swapped #localCamOff { inset: 0; width: auto; aspect-ratio: auto; border: none; border-radius: 0; z-index: 2; gap: 8px; }
-  #screen-call.swapped #localCamOff .avatar, #screen-call.swapped #localCamOff .avatar-img { width: 64px; height: 64px; font-size: 28px; }
-  #screen-call.swapped #localCamOff .name { font-size: 16px; }
-  #screen-call.swapped #localCamOff .sub { display: block; }
-  /* Filter picker strip (horizontal, above the buttons). */
-  .filter-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: none; }
-  .filter-strip::-webkit-scrollbar { display: none; }
-  .filter-chip { flex: 0 0 auto; padding: 9px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(6px); font-family: inherit; }
-  .filter-chip.active { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); border-color: transparent; }
+  .slot-pip .cam-off, .video-wrap.swapped .slot-main .cam-off { gap: 4px; }
+  .slot-pip .cam-off .avatar, .slot-pip .cam-off .avatar-img, .video-wrap.swapped .slot-main .cam-off .avatar, .video-wrap.swapped .slot-main .cam-off .avatar-img { width: 40px; height: 40px; font-size: 18px; }
+  .slot-pip .cam-off .name, .video-wrap.swapped .slot-main .cam-off .name { font-size: 11px; }
+  .slot-pip .cam-off .sub, .video-wrap.swapped .slot-main .cam-off .sub { display: none; }
+  .video-wrap.swapped .slot-pip .cam-off .sub { display: block; }
+  /* Connecting overlay. */
+  .connecting-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,0,0,.35); color: #fff; font-weight: 600; }
+  .connecting-overlay .spinner { margin: 0; }
+  /* Filter panel (bottom sheet with categories, preview cards, intensity). */
+  .filter-panel { background: rgba(18,18,36,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 14px; margin-bottom: 12px; max-height: 46vh; overflow-y: auto; }
+  .filter-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .filter-panel-head b { font-size: 16px; }
+  .filter-panel-head .link-btn { background: none; border: none; color: #ff8fb0; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 4px 8px; }
+  .filter-panel-head .close-btn { background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer; padding: 4px 8px; }
+  .filter-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter-tab { flex: 1; padding: 8px 0; border-radius: 999px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: #ddd; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .filter-tab.active { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); border-color: transparent; color: #fff; }
+  .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .filter-card { border: 2px solid rgba(255,255,255,.12); border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.05); cursor: pointer; padding: 0; font-family: inherit; color: #fff; text-align: center; }
+  .filter-card.active { border-color: #ff4d8d; box-shadow: 0 0 0 2px rgba(255,77,141,.35); }
+  .filter-card .swatch { height: 52px; }
+  .filter-card .fname { font-size: 12px; font-weight: 700; padding: 7px 4px; display: block; }
+  .filter-intensity { margin-top: 14px; }
+  .filter-intensity label { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin: 0 0 6px; }
+  .filter-intensity input[type=range] { width: 100%; accent-color: #ff4d8d; }
   /* Gift popup panel (opens from the Gift button). */
   .gift-panel { background: rgba(20,20,40,.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; padding: 12px 12px 6px; margin-bottom: 12px; }
   .gift-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -89,16 +101,21 @@
   .peer-label { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(10,10,20,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.14); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
   .call-top { position: absolute; top: 76px; left: 14px; z-index: 3; display: flex; gap: 8px; }
   .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
-  .ctrl-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+  .ctrl-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .ctrl-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .ctrl-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,0,0,.6); white-space: nowrap; }
-  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); font-size: 24px; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: transform .15s; }
+  .ctrl { width: 50px; height: 50px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); font-size: 22px; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: transform .15s; }
   .ctrl:hover { transform: scale(1.06); }
   .ctrl.off { background: #ef4444; }
   .ctrl.active { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); border-color: transparent; }
-  .ctrl.wide { width: auto; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 700; }
+  .ctrl.wide { width: auto; padding: 0 20px; border-radius: 999px; font-size: 15px; font-weight: 700; }
   .ctrl.next { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); box-shadow: 0 8px 22px rgba(255,77,141,.4); }
   .ctrl.end { background: #ef4444; }
+  /* More menu (report / block live here, off the main row). */
+  .more-menu { position: absolute; bottom: calc(100% + 10px); right: 14px; z-index: 8; background: rgba(22,22,44,.95); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 6px; min-width: 170px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+  .more-menu button { display: flex; width: 100%; gap: 10px; align-items: center; background: none; border: none; color: #fff; font-size: 15px; font-weight: 600; padding: 11px 12px; border-radius: 10px; cursor: pointer; font-family: inherit; text-align: left; }
+  .more-menu button:hover { background: rgba(255,255,255,.08); }
+  .more-menu button.danger { color: #ff8f9e; }
   .gift-tray { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; }
   .gift-tray::-webkit-scrollbar { display: none; }
   .gift { flex: 0 0 auto; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; transition: transform .15s; }
@@ -108,18 +125,31 @@
   .gift-pop svg { width: 110px; height: 110px; display: block; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(245,158,11,.45)); }
   .coin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: linear-gradient(135deg, #ffe08a, #f59e0b); margin-right: 4px; }
   .gift .cost { font-size: 11px; color: #ffd166; font-weight: 700; }
-  /* chat drawer */
-  /* 100% transparent chat, like TikTok Live — no panel, no blur, the video shows straight through. */
-  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: transparent; border: none; border-radius: 0; display: flex; flex-direction: column; padding: 14px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-  #chatLog { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
-  .msg { max-width: 80%; padding: 10px 13px; border-radius: 14px; font-size: 15px; line-height: 1.4; background: rgba(0,0,0,.35); align-self: flex-start; }
-  .msg.me { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); align-self: flex-end; }
-  .msg .who { display: block; font-size: 11px; opacity: .7; margin-bottom: 2px; }
-  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
-  .chat-input-row input { flex: 1; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; }
-  .chat-input-row input { flex: 1; }
-  /* gift fx + toast */
+  /* TikTok-style floating chat — messages float over the video, no panel,
+     no blur, no header or close button cluttering the view. Just the
+     messages, the sender's photo and name, and a floating input. */
+  .float-chat { margin-bottom: 10px; }
+  .float-log { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; max-height: 170px; overflow: hidden; margin-bottom: 8px; pointer-events: none; }
+  .fmsg { display: flex; gap: 8px; align-items: flex-start; max-width: 88%; animation: floatIn .3s ease both; }
+  @keyframes floatIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .fmsg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+  .fmsg-body { background: rgba(0,0,0,.35); border-radius: 14px; padding: 7px 11px; }
+  .fmsg.me .fmsg-body { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); }
+  .fmsg-name { font-size: 11px; font-weight: 700; color: #ffd166; display: block; margin-bottom: 1px; }
+  .fmsg-time { font-weight: 400; color: rgba(255,255,255,.6); margin-left: 4px; }
+  .fmsg-text { font-size: 14px; line-height: 1.35; word-break: break-word; }
+  .float-input-row { display: flex; gap: 8px; align-items: center; }
+  .float-input-row input { flex: 1; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 11px 16px; font-size: 15px; color: #fff; outline: none; font-family: inherit; }
+  .float-input-row input:focus { border-color: #ff4d8d; }
+  .float-btn { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.35); color: #fff; font-size: 19px; cursor: pointer; }
+  .float-send { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; border: none; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); color: #fff; font-size: 16px; cursor: pointer; }
+  .reaction-bar { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+  .reaction-bar button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); background: rgba(0,0,0,.4); font-size: 22px; cursor: pointer; }
+  /* gift fx + reactions + toast */
   #giftFx { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+  #reactionLayer { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+  .float-reaction { position: absolute; bottom: 35%; font-size: 34px; animation: reactFloat 2.1s ease-out forwards; }
+  @keyframes reactFloat { 0% { transform: translateY(0) scale(.6); opacity: 0; } 15% { opacity: 1; transform: translateY(-20px) scale(1.15); } 100% { transform: translateY(-160px) scale(1) rotate(12deg); opacity: 0; } }
   .gift-pop { font-size: 110px; animation: pop 2s ease forwards; text-align: center; }
   .gift-pop small { display: block; font-size: 18px; font-weight: 700; margin-top: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
   @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 20% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1) translateY(-70px); opacity: 0; } }
@@ -264,55 +294,92 @@
 
 <!-- 5. CALL -->
 <div class="screen hidden" id="screen-call">
-  <div class="video-wrap">
-    <video id="remoteVideo" autoplay playsinline onclick="swapVideo('remote')"></video>
-    <div class="cam-off hidden" id="remoteCamOff" onclick="swapVideo('remote')">
-      <svg viewBox="0 0 48 48" style="width:34px;height:34px" aria-hidden="true"><use href="#logoMark"/></svg>
-      <img id="remoteCamOffImg" class="avatar-img hidden" alt="">
-      <div class="avatar" id="remoteCamOffAvatar">?</div>
-      <div class="name" id="remoteCamOffName">Stranger</div>
-      <div class="sub">Camera off</div>
+  <div class="video-wrap" id="videoWrap">
+    <div class="slot slot-main" id="slotMain">
+      <video id="remoteVideo" autoplay playsinline></video>
+      <div class="cam-off hidden" id="remoteCamOff">
+        <svg viewBox="0 0 48 48" style="width:34px;height:34px" aria-hidden="true"><use href="#logoMark"/></svg>
+        <img id="remoteCamOffImg" class="avatar-img hidden" alt="">
+        <div class="avatar" id="remoteCamOffAvatar">?</div>
+        <div class="name" id="remoteCamOffName">Stranger</div>
+        <div class="sub">Camera off</div>
+      </div>
     </div>
-    <video id="localVideo" autoplay muted playsinline onclick="swapVideo('local')"></video>
-    <div class="cam-off hidden" id="localCamOff" onclick="swapVideo('local')">
-      <img id="localCamOffImg" class="avatar-img hidden" alt="">
-      <div class="avatar" id="localCamOffAvatar">Y</div>
-      <div class="name">You</div>
-      <div class="sub">Camera off</div>
+    <div class="slot slot-pip" id="slotPip">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <div class="cam-off hidden" id="localCamOff">
+        <img id="localCamOffImg" class="avatar-img hidden" alt="">
+        <div class="avatar" id="localCamOffAvatar">Y</div>
+        <div class="name">You</div>
+        <div class="sub">Camera off</div>
+      </div>
     </div>
-    <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span></div>
+    <div class="connecting-overlay hidden" id="connectingOverlay">
+      <div class="spinner"></div>
+      <div id="connectingText">Connecting…</div>
+    </div>
+    <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span> · <span id="callTimer">00:00</span></div>
     <div class="call-top">
       <span class="pill"><span class="coin-dot"></span><b id="coinCountCall">0</b></span>
       <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
+      <span class="pill" id="netPill">📶 —</span>
     </div>
     <div id="giftFx"></div>
+    <div id="reactionLayer"></div>
     <div class="controls">
-      <div class="filter-strip hidden" id="filterStrip"></div>
+      <div class="filter-panel hidden" id="filterPanel">
+        <div class="filter-panel-head">
+          <b>✨ Filters</b>
+          <span>
+            <button class="link-btn" onclick="resetFilter()">Reset</button>
+            <button class="close-btn" onclick="toggleFilterPanel()">✕</button>
+          </span>
+        </div>
+        <div class="filter-tabs" id="filterTabs"></div>
+        <div class="filter-grid" id="filterGrid"></div>
+        <div class="filter-intensity">
+          <label><span>Intensity</span><span id="filterIntensityVal">100%</span></label>
+          <input type="range" id="filterIntensity" min="0" max="100" value="100" oninput="onFilterIntensity(this.value)">
+        </div>
+      </div>
       <div class="gift-panel hidden" id="giftPanel">
         <div class="gift-panel-head"><b>🎁 Send a gift</b><button onclick="toggleGiftPanel()">✕</button></div>
         <div class="gift-tray" id="giftTray"></div>
       </div>
+      <div class="float-chat" id="floatChat">
+        <div class="float-log" id="chatLog"></div>
+        <div class="reaction-bar hidden" id="reactionBar">
+          <button onclick="sendReaction('❤️')">❤️</button>
+          <button onclick="sendReaction('🔥')">🔥</button>
+          <button onclick="sendReaction('😂')">😂</button>
+          <button onclick="sendReaction('😍')">😍</button>
+          <button onclick="sendReaction('👏')">👏</button>
+          <button onclick="sendReaction('✨')">✨</button>
+        </div>
+        <div class="float-input-row" id="chatInputRow">
+          <input type="text" id="chatInput" maxlength="500" placeholder="Say something…" autocomplete="off" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="float-btn" onclick="toggleReactionBar()" title="Reactions">😊</button>
+          <button class="float-send" onclick="sendChat()" title="Send">➤</button>
+        </div>
+      </div>
       <div class="ctrl-row">
         <div class="ctrl-wrap"><button class="ctrl" id="micBtn" onclick="toggleMic()">🎙️</button><span class="ctrl-label">Mic</span></div>
         <div class="ctrl-wrap"><button class="ctrl" id="camBtn" onclick="toggleCam()">📷</button><span class="ctrl-label">Camera</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" id="filterBtn" onclick="toggleFilterStrip()">✨</button><span class="ctrl-label" id="filterLabel">Filter</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" onclick="toggleGiftPanel()">🎁</button><span class="ctrl-label">Gift</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="switchBtn" onclick="switchCamera()">🔄</button><span class="ctrl-label">Switch</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="filterBtn" onclick="toggleFilterPanel()">✨</button><span class="ctrl-label" id="filterLabel">Filter</span></div>
         <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()">💬</button><span class="ctrl-label">Chat</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" onclick="toggleGiftPanel()">🎁</button><span class="ctrl-label">Gift</span></div>
       </div>
       <div class="ctrl-row">
+        <div class="ctrl-wrap"><button class="ctrl" id="swapBtn" onclick="toggleSwap()">↔️</button><span class="ctrl-label">Swap</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="fsBtn" onclick="toggleFullscreen()">⛶</button><span class="ctrl-label">Full</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" onclick="toggleMoreMenu()">⋯</button><span class="ctrl-label">More</span></div>
         <button class="ctrl wide next" onclick="nextStranger()">Next ➜</button>
         <button class="ctrl wide end" onclick="endCall()">End ✕</button>
       </div>
-    </div>
-    <div class="chat-drawer hidden" id="chatDrawer">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b>Chat with <span id="chatPeerName">Stranger</span></b>
-        <button class="btn small ghost" onclick="toggleChat()">Close</button>
-      </div>
-      <div id="chatLog"></div>
-      <div class="chat-input-row">
-        <input type="text" id="chatInput" maxlength="500" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="btn small" onclick="sendChat()">Send</button>
+      <div class="more-menu hidden" id="moreMenu">
+        <button onclick="reportPeer()">🚩 Report user</button>
+        <button class="danger" onclick="blockPeer()">🚫 Block user</button>
       </div>
     </div>
   </div>
@@ -632,18 +699,21 @@ function handle(msg) {
       peerVerified = !!msg.peer.verified;
       peerPhoto = msg.peer.photo || null;
       updatePeerLabel();
-      $('chatPeerName').textContent = peerName;
       $('chatLog').innerHTML = '';
+      showChat();
       $('remoteCamOff').classList.add('hidden');
       $('remoteCamOffName').textContent = peerName;
       $('remoteCamOffAvatar').textContent = peerName.charAt(0).toUpperCase();
       updateCamOffPhotos();
-      swapped = false;
-      $('screen-call').classList.remove('swapped');
+      resetSwap();
       isInitiator = !!msg.initiator;
       pendingCandidates = [];
       setConnState('connecting…');
       show('screen-call');
+      $('connectingOverlay').classList.remove('hidden');
+      $('connectingText').textContent = 'Connecting…';
+      startCallTimer();
+      $('netPill').textContent = '📶 —';
       startCall(msg.initiator);
       break;
     case 'offer': onOffer(msg.data); break;
@@ -659,10 +729,13 @@ function handle(msg) {
       }
       break;
     case 'chat':
-      // A message pops up on its own — the other person never has to
-      // press the Chat button to see it.
-      addChatMsg(msg.nickname, msg.text, false);
-      $('chatDrawer').classList.remove('hidden');
+      // TikTok-style: the message floats up over the video on its own —
+      // no drawer, no header, nothing else pops up with it.
+      addChatMsg(msg.nickname, msg.text, false, peerPhoto);
+      showChat();
+      break;
+    case 'reaction':
+      floatReaction(msg.emoji);
       break;
     case 'cam-state': {
       const off = msg.on === false;
@@ -750,7 +823,7 @@ async function startCall(initiator) {
   $('remoteCamOff').classList.add('hidden');
   $('remoteVideo').style.filter = '';
   if (!camOn) send({ type: 'cam-state', on: false });
-  if (currentFilter !== 0) send({ type: 'filter', filter: FILTERS[currentFilter].css });
+  if (currentFilter !== 0) send({ type: 'filter', filter: currentFilterCSS() });
 }
 
 function flushCandidates() {
@@ -767,6 +840,17 @@ function setConnState(state) {
     state === 'connected' ? 'connected' :
     state === 'failed' ? 'connection failed — retrying…' :
     (state === 'connecting' || state === 'checking') ? 'connecting…' : state;
+  // Hide the connecting overlay once the video is actually flowing.
+  const overlay = $('connectingOverlay');
+  if (overlay) {
+    if (state === 'connected') overlay.classList.add('hidden');
+    else {
+      overlay.classList.remove('hidden');
+      $('connectingText').textContent =
+        state === 'failed' ? 'Connection failed — retrying…' : 'Connecting…';
+    }
+  }
+  if (state === 'connected') startNetMonitor();
 }
 
 async function onOffer(offer) {
@@ -781,33 +865,117 @@ async function onOffer(offer) {
 function endCallUI() {
   closePC();
   peerId = null;
-  $('chatDrawer').classList.add('hidden');
+  stopCallTimer();
+  stopNetMonitor();
   $('giftPanel').classList.add('hidden');
-  $('filterStrip').classList.add('hidden');
+  $('filterPanel').classList.add('hidden');
+  $('moreMenu').classList.add('hidden');
+  $('reactionBar').classList.add('hidden');
   $('remoteCamOff').classList.add('hidden');
-  swapped = false;
-  $('screen-call').classList.remove('swapped');
+  $('connectingOverlay').classList.add('hidden');
+  resetSwap();
   show('screen-lobby');
 }
 
-// Tap your own small picture to swap — like WhatsApp, the small video
-// becomes big and the big one becomes small. Tap the small one again
-// to swap back.
-function swapVideo(who) {
-  if (who === 'local' && !swapped) swapped = true;
-  else if (who === 'remote' && swapped) swapped = false;
-  else return;
-  $('screen-call').classList.toggle('swapped', swapped);
+// ---------- call timer + network quality ----------
+let callStartTime = 0, callTimerId = 0, netIntervalId = 0;
+function startCallTimer() {
+  stopCallTimer();
+  callStartTime = Date.now();
+  $('callTimer').textContent = '00:00';
+  callTimerId = setInterval(() => {
+    const s = Math.floor((Date.now() - callStartTime) / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    $('callTimer').textContent = mm + ':' + ss;
+  }, 1000);
+}
+function stopCallTimer() {
+  if (callTimerId) { clearInterval(callTimerId); callTimerId = 0; }
+  $('callTimer').textContent = '00:00';
+}
+function startNetMonitor() {
+  stopNetMonitor();
+  netIntervalId = setInterval(async () => {
+    if (!pc) return;
+    try {
+      const stats = await pc.getStats();
+      let rtt = null;
+      stats.forEach((r) => {
+        if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated && typeof r.currentRoundTripTime === 'number') rtt = r.currentRoundTripTime;
+      });
+      const pill = $('netPill');
+      if (rtt === null) { pill.textContent = '📶 —'; return; }
+      const ms = Math.round(rtt * 1000);
+      pill.textContent = '📶 ' + (ms < 150 ? 'Good' : ms < 300 ? 'Fair' : 'Poor') + ' · ' + ms + 'ms';
+    } catch {}
+  }, 3000);
+}
+function stopNetMonitor() {
+  if (netIntervalId) { clearInterval(netIntervalId); netIntervalId = 0; }
+}
+
+// ---------- WhatsApp-style video swap ----------
+// The two videos live in slots (main + floating PiP). Swapping only moves
+// the SLOTS — the WebRTC streams and the peer connection are untouched, so
+// the call never drops. The PiP is also draggable: drag it to move it,
+// tap it to swap. A tap is a press that barely moves; a drag moves it.
+let pipOffsetX = 0, pipOffsetY = 0, pipDrag = null;
+function currentPipSlot() {
+  return swapped ? $('slotMain') : $('slotPip');
+}
+function toggleSwap() {
+  swapped = !swapped;
+  $('videoWrap').classList.toggle('swapped', swapped);
+  // A fresh layout starts with the PiP back in its corner.
+  pipOffsetX = 0; pipOffsetY = 0;
+  $('slotMain').style.transform = '';
+  $('slotPip').style.transform = '';
   updatePeerLabel();
+}
+function resetSwap() {
+  swapped = false;
+  pipOffsetX = 0; pipOffsetY = 0;
+  $('videoWrap').classList.remove('swapped');
+  $('slotMain').style.transform = '';
+  $('slotPip').style.transform = '';
 }
 function updatePeerLabel() {
   $('peerName').textContent = swapped ? 'You' : (peerName + (peerVerified ? ' ✓' : ''));
+}
+function onSlotPointerDown(e) {
+  const slot = e.currentTarget;
+  // Only the floating PiP can be dragged or tapped to swap.
+  if (slot !== currentPipSlot()) return;
+  pipDrag = { id: e.pointerId, startX: e.clientX, startY: e.clientY, dx: pipOffsetX, dy: pipOffsetY, moved: false };
+  try { slot.setPointerCapture(e.pointerId); } catch {}
+}
+function onSlotPointerMove(e) {
+  if (!pipDrag || e.pointerId !== pipDrag.id) return;
+  const slot = currentPipSlot();
+  const wrap = $('videoWrap').getBoundingClientRect();
+  const totalDx = pipDrag.dx + (e.clientX - pipDrag.startX);
+  const totalDy = pipDrag.dy + (e.clientY - pipDrag.startY);
+  if (Math.abs(e.clientX - pipDrag.startX) + Math.abs(e.clientY - pipDrag.startY) > 8) pipDrag.moved = true;
+  // Keep the PiP inside the screen.
+  const w = 108, h = 144;
+  const left0 = wrap.width - w - 14, top0 = 14;
+  const ox = Math.max(8 - left0, Math.min(wrap.width - 8 - w - left0, totalDx));
+  const oy = Math.max(8 - top0, Math.min(wrap.height - 8 - h - top0, totalDy));
+  pipOffsetX = ox; pipOffsetY = oy;
+  slot.style.transform = `translate(${ox}px, ${oy}px)`;
+}
+function onSlotPointerUp(e) {
+  if (!pipDrag || e.pointerId !== pipDrag.id) return;
+  const wasDrag = pipDrag.moved;
+  pipDrag = null;
+  if (!wasDrag) toggleSwap(); // it was a tap on the small video — swap
 }
 
 // ---------- call actions ----------
 function findMatch() { send({ type: 'find' }); show('screen-searching'); }
 function cancelFind() { send({ type: 'cancel-find' }); show('screen-lobby'); }
-function nextStranger() { send({ type: 'next' }); closePC(); show('screen-searching'); }
+function nextStranger() { send({ type: 'next' }); closePC(); stopCallTimer(); stopNetMonitor(); resetSwap(); $('connectingOverlay').classList.add('hidden'); show('screen-searching'); }
 function endCall() { send({ type: 'leave' }); endCallUI(); }
 
 function toggleMic() {
@@ -825,77 +993,238 @@ function toggleCam() {
   $('localCamOff').classList.toggle('hidden', camOn);
   send({ type: 'cam-state', on: camOn });
 }
-// ---------- beauty filters ----------
-// 5 filters made for girls. The first version tried to bake the filter into
-// the video you SEND through a canvas — most phones can't do that, so the
-// other person saw nothing. Now your filter choice is sent to the other
-// phone, which applies it to your video on THEIR screen. That works on
-// every phone.
-const FILTERS = [
-  { name: 'None',    css: '' },
-  { name: 'Natural', css: 'brightness(1.08) saturate(1.15) contrast(1.03)' },
-  { name: 'Glow',    css: 'brightness(1.16) saturate(1.35) contrast(0.96)' },
-  { name: 'Warm',    css: 'sepia(0.35) saturate(1.45) brightness(1.08)' },
-  { name: 'Rosy',    css: 'sepia(0.22) saturate(1.55) hue-rotate(-14deg) brightness(1.1)' },
-  { name: 'Cool',    css: 'hue-rotate(14deg) saturate(1.3) brightness(1.08)' },
-];
-let currentFilter = 0;
-
-function renderFilterStrip() {
-  const strip = $('filterStrip');
-  strip.innerHTML = '';
-  FILTERS.forEach((f, i) => {
-    const b = document.createElement('button');
-    b.className = 'filter-chip' + (i === currentFilter ? ' active' : '');
-    b.textContent = f.name;
-    b.onclick = () => applyFilter(i);
-    strip.appendChild(b);
-  });
+// ---------- extra call controls ----------
+let facingMode = 'user';
+async function switchCamera() {
+  if (!localStream) { toast('Camera is not on yet.'); return; }
+  const next = facingMode === 'user' ? 'environment' : 'user';
+  try {
+    const ns = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false });
+    const newTrack = ns.getVideoTracks()[0];
+    const oldTrack = localStream.getVideoTracks()[0];
+    const sender = pc && pc.getSenders().find(s => s.track === oldTrack);
+    if (sender) await sender.replaceTrack(newTrack);
+    if (oldTrack) { localStream.removeTrack(oldTrack); oldTrack.stop(); }
+    localStream.addTrack(newTrack);
+    $('localVideo').srcObject = localStream;
+    $('localVideoLobby').srcObject = localStream;
+    ns.getTracks().forEach(t => { if (t !== newTrack) t.stop(); });
+    facingMode = next;
+    toast(next === 'environment' ? 'Back camera' : 'Front camera');
+  } catch (e) {
+    toast('This device cannot switch cameras.');
+  }
 }
-function toggleFilterStrip() {
-  $('filterStrip').classList.toggle('hidden');
+function toggleFullscreen() {
+  const fs = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fs) {
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } else {
+    const el = document.documentElement;
+    const req = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+    if (req && req.catch) req.catch(() => toast('Fullscreen is not supported on this browser.'));
+    else if (!req) toast('Fullscreen is not supported on this browser.');
+  }
+}
+function toggleMoreMenu() {
+  $('moreMenu').classList.toggle('hidden');
+  $('filterPanel').classList.add('hidden');
   $('giftPanel').classList.add('hidden');
+  $('reactionBar').classList.add('hidden');
+}
+// ---------- beauty filters ----------
+// Real CSS filters only — every entry below genuinely changes the picture.
+// (Blur Background is deliberately NOT here: blurring just the background
+// needs a face/body segmentation model, which this app does not have.
+// Cartoon / Anime are stylized color looks, not face tracking.)
+// How they reach the other person: your filter choice is sent to the other
+// phone, which applies it to your video on THEIR screen. That works on
+// every phone — the old canvas approach only worked on some.
+// Each filter is a list of CSS functions with a target value and a neutral
+// value, so the intensity slider can scale the effect up and down.
+const FILTER_CATS = [
+  { id: 'popular', label: 'Popular' },
+  { id: 'beauty', label: 'Beauty' },
+  { id: 'fun', label: 'Fun' },
+];
+const FILTERS = [
+  { name: 'None', cat: 'popular', swatch: 'linear-gradient(135deg,#888,#333)', fx: [] },
+  { name: 'Beauty', cat: 'popular', swatch: 'linear-gradient(135deg,#ffd9e8,#fff0f5)', fx: [['brightness',1.1,1],['saturate',1.2,1],['contrast',1.02,1]] },
+  { name: 'Smooth Skin', cat: 'popular', swatch: 'linear-gradient(135deg,#ffe0d6,#fff5ee)', fx: [['brightness',1.08,1],['saturate',1.1,1],['contrast',0.98,1],['blur',0.4,0]] },
+  { name: 'Natural Glow', cat: 'popular', swatch: 'linear-gradient(135deg,#fff3b0,#ffe08a)', fx: [['brightness',1.14,1],['saturate',1.3,1],['contrast',0.97,1]] },
+  { name: 'Soft Focus', cat: 'popular', swatch: 'linear-gradient(135deg,#e8e8f0,#ffffff)', fx: [['brightness',1.1,1],['contrast',0.95,1],['blur',0.6,0]] },
+  { name: 'Warm Tone', cat: 'popular', swatch: 'linear-gradient(135deg,#ffb347,#ff8c42)', fx: [['sepia',0.3,0],['saturate',1.4,1],['brightness',1.06,1]] },
+  { name: 'Cool Tone', cat: 'popular', swatch: 'linear-gradient(135deg,#a5d8ff,#7c9eff)', fx: [['hue-rotate',14,0],['saturate',1.25,1],['brightness',1.06,1]] },
+  { name: 'Vintage', cat: 'popular', swatch: 'linear-gradient(135deg,#d9b380,#8a6d3b)', fx: [['sepia',0.5,0],['contrast',0.95,1],['brightness',0.95,1],['saturate',0.8,1]] },
+  { name: 'Cinematic', cat: 'popular', swatch: 'linear-gradient(135deg,#3b3b5e,#101020)', fx: [['contrast',1.15,1],['saturate',0.9,1],['brightness',0.92,1],['sepia',0.15,0]] },
+  { name: 'Black & White', cat: 'popular', swatch: 'linear-gradient(135deg,#999,#111)', fx: [['grayscale',1,0],['contrast',1.05,1]] },
+  { name: 'Golden Hour', cat: 'popular', swatch: 'linear-gradient(135deg,#ffd166,#ff9f43)', fx: [['sepia',0.4,0],['saturate',1.6,1],['brightness',1.1,1],['hue-rotate',-10,0]] },
+  { name: 'Pink Glow', cat: 'popular', swatch: 'linear-gradient(135deg,#ff9ecf,#ff4d8d)', fx: [['sepia',0.2,0],['saturate',1.5,1],['hue-rotate',-15,0],['brightness',1.1,1]] },
+  { name: 'Dreamy', cat: 'popular', swatch: 'linear-gradient(135deg,#e0c3fc,#fbc2eb)', fx: [['brightness',1.18,1],['saturate',1.2,1],['contrast',0.9,1],['blur',0.5,0]] },
+  { name: 'Skin Smoothing', cat: 'beauty', swatch: 'linear-gradient(135deg,#ffe4e1,#fff0ea)', fx: [['blur',0.5,0],['brightness',1.08,1],['saturate',1.12,1]] },
+  { name: 'Brightness', cat: 'beauty', swatch: 'linear-gradient(135deg,#fffbe0,#fff3a0)', fx: [['brightness',1.25,1]] },
+  { name: 'Soft Glow', cat: 'beauty', swatch: 'linear-gradient(135deg,#fff0f0,#ffd6d6)', fx: [['brightness',1.15,1],['saturate',1.25,1],['contrast',0.95,1],['blur',0.3,0]] },
+  { name: 'Portrait', cat: 'beauty', swatch: 'linear-gradient(135deg,#f5d0a9,#e8b4b8)', fx: [['brightness',1.08,1],['saturate',1.2,1],['contrast',1.08,1]] },
+  { name: 'Natural Beauty', cat: 'beauty', swatch: 'linear-gradient(135deg,#ffe8d6,#ffd1a9)', fx: [['brightness',1.06,1],['saturate',1.15,1],['contrast',1.02,1]] },
+  { name: 'Face Lighting', cat: 'beauty', swatch: 'linear-gradient(135deg,#ffffff,#ffe9a8)', fx: [['brightness',1.2,1],['contrast',1.05,1]] },
+  { name: 'Warm Beauty', cat: 'beauty', swatch: 'linear-gradient(135deg,#ffcf9e,#ff9e7d)', fx: [['sepia',0.25,0],['saturate',1.4,1],['brightness',1.1,1]] },
+  { name: 'HD Enhancement', cat: 'beauty', swatch: 'linear-gradient(135deg,#c2e9fb,#a1c4fd)', fx: [['contrast',1.12,1],['saturate',1.2,1],['brightness',1.05,1]] },
+  { name: 'Cartoon', cat: 'fun', swatch: 'linear-gradient(135deg,#ff6b6b,#ffd93d)', fx: [['saturate',1.8,1],['contrast',1.4,1],['brightness',1.05,1]] },
+  { name: 'Anime', cat: 'fun', swatch: 'linear-gradient(135deg,#ff9ff3,#f368e0)', fx: [['saturate',1.7,1],['contrast',1.3,1],['hue-rotate',-5,0],['brightness',1.12,1]] },
+  { name: 'Vintage Camera', cat: 'fun', swatch: 'linear-gradient(135deg,#c9a86a,#6b4f2a)', fx: [['sepia',0.6,0],['contrast',1.1,1],['brightness',0.9,1],['saturate',0.7,1]] },
+  { name: 'Retro', cat: 'fun', swatch: 'linear-gradient(135deg,#e0aaff,#ffafcc)', fx: [['sepia',0.45,0],['saturate',1.2,1],['contrast',1.05,1],['hue-rotate',-8,0]] },
+  { name: 'Rainbow', cat: 'fun', swatch: 'linear-gradient(135deg,#ff5e78,#ffb84d,#4dff88,#4dc3ff,#b18cff)', fx: [['hue-rotate',60,0],['saturate',1.6,1]] },
+  { name: 'Sparkle', cat: 'fun', swatch: 'linear-gradient(135deg,#fff7ae,#ffd166)', fx: [['brightness',1.2,1],['saturate',1.4,1],['contrast',0.95,1]] },
+];
+let currentFilter = 0; // index into FILTERS
+let currentIntensity = 1; // 0..1
+let filterCat = 'popular';
+
+function filterCSS(f, t) {
+  if (!f || !f.fx.length) return '';
+  return f.fx.map(([fn, v, n]) => {
+    const val = n + (v - n) * t;
+    if (fn === 'hue-rotate') return 'hue-rotate(' + val.toFixed(0) + 'deg)';
+    if (fn === 'blur') return 'blur(' + val.toFixed(2) + 'px)';
+    return fn + '(' + val.toFixed(2) + ')';
+  }).join(' ');
+}
+function currentFilterCSS() { return filterCSS(FILTERS[currentFilter], currentIntensity); }
+
+function renderFilterPanel() {
+  const tabs = $('filterTabs');
+  tabs.innerHTML = '';
+  FILTER_CATS.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'filter-tab' + (c.id === filterCat ? ' active' : '');
+    b.textContent = c.label;
+    b.onclick = () => { filterCat = c.id; renderFilterPanel(); };
+    tabs.appendChild(b);
+  });
+  const grid = $('filterGrid');
+  grid.innerHTML = '';
+  FILTERS.forEach((f, i) => {
+    if (f.cat !== filterCat) return;
+    const b = document.createElement('button');
+    b.className = 'filter-card' + (i === currentFilter ? ' active' : '');
+    b.innerHTML = '<span class="swatch" style="background:' + f.swatch + '"></span><span class="fname">' + f.name + '</span>';
+    b.onclick = () => applyFilter(i);
+    grid.appendChild(b);
+  });
+  $('filterIntensity').value = Math.round(currentIntensity * 100);
+  $('filterIntensityVal').textContent = Math.round(currentIntensity * 100) + '%';
+}
+function toggleFilterPanel() {
+  $('filterPanel').classList.toggle('hidden');
+  $('giftPanel').classList.add('hidden');
+  $('moreMenu').classList.add('hidden');
+  $('reactionBar').classList.add('hidden');
 }
 function toggleGiftPanel() {
   $('giftPanel').classList.toggle('hidden');
-  $('filterStrip').classList.add('hidden');
+  $('filterPanel').classList.add('hidden');
+  $('moreMenu').classList.add('hidden');
+  $('reactionBar').classList.add('hidden');
 }
 function applyFilter(i) {
   currentFilter = i;
   const f = FILTERS[i];
+  const css = currentFilterCSS();
   // Your preview shows the filter right away.
   ['localVideo', 'localVideoLobby'].forEach(id => {
     const el = $(id);
-    if (el) el.style.filter = f.css;
+    if (el) el.style.filter = css;
   });
-  renderFilterStrip();
+  renderFilterPanel();
   $('filterBtn').classList.toggle('active', i !== 0);
   $('filterLabel').textContent = i === 0 ? 'Filter' : f.name;
   // Tell the other phone to show you with this filter.
-  send({ type: 'filter', filter: f.css });
+  send({ type: 'filter', filter: css });
   toast(i === 0 ? 'Filter off' : f.name + ' filter on — the other person sees it too');
 }
-function toggleChat() { $('chatDrawer').classList.toggle('hidden'); }
-
+function onFilterIntensity(v) {
+  currentIntensity = Math.max(0, Math.min(100, +v)) / 100;
+  $('filterIntensityVal').textContent = v + '%';
+  const css = currentFilterCSS();
+  ['localVideo', 'localVideoLobby'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.filter = css;
+  });
+  send({ type: 'filter', filter: css });
+}
+function resetFilter() {
+  currentIntensity = 1;
+  applyFilter(0);
+}
+// ---------- TikTok-style floating chat ----------
+// Messages float over the video — no drawer, no header, no close button.
+// Only the message itself appears, with the sender's photo, name and time.
+let chatVisible = true;
+function showChat() { chatVisible = true; $('floatChat').classList.remove('hidden'); }
+function toggleChat() {
+  chatVisible = !chatVisible;
+  $('floatChat').classList.toggle('hidden', !chatVisible);
+  $('reactionBar').classList.add('hidden');
+}
+function toggleReactionBar() { $('reactionBar').classList.toggle('hidden'); }
+function sendReaction(emoji) {
+  send({ type: 'reaction', emoji });
+  floatReaction(emoji);
+  $('reactionBar').classList.add('hidden');
+}
+function floatReaction(emoji) {
+  const layer = $('reactionLayer');
+  if (!layer) return;
+  const s = document.createElement('span');
+  s.className = 'float-reaction';
+  s.textContent = emoji;
+  s.style.left = (55 + Math.random() * 35) + '%';
+  layer.appendChild(s);
+  setTimeout(() => s.remove(), 2200);
+}
 function sendChat() {
   const inp = $('chatInput');
   const text = inp.value.trim();
   if (!text) return;
   send({ type: 'chat', text });
-  addChatMsg('You', text, true);
+  addChatMsg('You', text, true, myPhoto);
   inp.value = '';
 }
-function addChatMsg(who, text, me) {
+function addChatMsg(who, text, me, photo) {
   const log = $('chatLog');
   const div = document.createElement('div');
-  div.className = 'msg' + (me ? ' me' : '');
-  const whoEl = document.createElement('span');
-  whoEl.className = 'who';
-  whoEl.textContent = who;
-  div.appendChild(whoEl);
-  div.appendChild(document.createTextNode(text));
+  div.className = 'fmsg' + (me ? ' me' : '');
+  let av;
+  if (photo) {
+    av = document.createElement('img');
+    av.className = 'fmsg-avatar';
+    av.src = photo;
+    av.alt = '';
+  } else {
+    av = document.createElement('span');
+    av.className = 'fmsg-avatar';
+    av.textContent = (who || '?').charAt(0).toUpperCase();
+  }
+  const body = document.createElement('div');
+  body.className = 'fmsg-body';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'fmsg-name';
+  nameEl.textContent = who + ' ';
+  const t = document.createElement('span');
+  t.className = 'fmsg-time';
+  t.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  nameEl.appendChild(t);
+  const textEl = document.createElement('span');
+  textEl.className = 'fmsg-text';
+  textEl.textContent = text;
+  body.appendChild(nameEl);
+  body.appendChild(textEl);
+  div.appendChild(av);
+  div.appendChild(body);
   log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
+  // Keep only the latest few messages floating over the video.
+  while (log.children.length > 6) log.removeChild(log.firstChild);
 }
 
 // ---------- gifts ----------
@@ -941,9 +1270,18 @@ function blockPeer() {
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
 
 renderGifts();
-renderFilterStrip();
+renderFilterPanel();
 loadMyPhoto();
 $('photoInput').addEventListener('change', (e) => { onPhotoPicked(e.target.files[0]); e.target.value = ''; });
+// The floating PiP is draggable and tappable: pointer events on both slots,
+// the handlers only act on whichever slot is currently the small one.
+['slotMain', 'slotPip'].forEach(id => {
+  const slot = $(id);
+  slot.addEventListener('pointerdown', onSlotPointerDown);
+  slot.addEventListener('pointermove', onSlotPointerMove);
+  slot.addEventListener('pointerup', onSlotPointerUp);
+  slot.addEventListener('pointercancel', () => { pipDrag = null; });
+});
 initAuth();
 setProfileFormEnabled(false);
 show('screen-age');
