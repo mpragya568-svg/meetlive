@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MeetLive — Random Video Chat</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f0f1a; color: #fff; min-height: 100vh; overflow-x: hidden; }
+  .hidden { display: none !important; }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  h1.logo { font-size: 44px; font-weight: 800; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { color: #aaa; margin: 8px 0 28px; text-align: center; }
+  .card { background: #1a1a2e; border: 1px solid #2a2a44; border-radius: 18px; padding: 24px; width: 100%; max-width: 380px; }
+  .card h2 { font-size: 20px; margin-bottom: 14px; }
+  label { display: block; font-size: 13px; color: #aaa; margin: 12px 0 6px; }
+  input[type=text], select { width: 100%; padding: 13px; border-radius: 12px; border: 1px solid #333; background: #121220; color: #fff; font-size: 16px; outline: none; }
+  input[type=text]:focus, select:focus { border-color: #8b5cf6; }
+  .rules { font-size: 13px; color: #bbb; line-height: 1.6; margin: 14px 0; }
+  .rules b { color: #fff; }
+  .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; color: #fff; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); margin-top: 12px; }
+  .btn:active { transform: scale(0.98); }
+  .btn.ghost { background: #262640; }
+  .btn.small { width: auto; padding: 10px 18px; font-size: 15px; margin-top: 0; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: #1a1a2e; border: 1px solid #2a2a44; border-radius: 999px; padding: 8px 14px; font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+  .topbar { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .match-btn { width: 190px; height: 190px; border-radius: 50%; border: 4px solid #ff4d8d; background: radial-gradient(circle at 35% 30%, #ff4d8d, #8b5cf6); color: #fff; font-size: 22px; font-weight: 800; cursor: pointer; box-shadow: 0 0 40px rgba(255,77,141,.45); margin: 26px 0; }
+  .match-btn:active { transform: scale(0.96); }
+  .preview { width: 100%; max-width: 380px; aspect-ratio: 3/4; border-radius: 18px; object-fit: cover; background: #000; border: 1px solid #2a2a44; }
+  .spinner { width: 54px; height: 54px; border: 5px solid #2a2a44; border-top-color: #ff4d8d; border-radius: 50%; animation: spin 1s linear infinite; margin: 24px 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* call screen */
+  #screen-call { padding: 0; justify-content: flex-start; }
+  .video-wrap { position: relative; width: 100%; height: 100vh; height: 100dvh; background: #000; overflow: hidden; }
+  #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
+  #localVideo { position: absolute; top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; border: 2px solid #fff; background: #000; z-index: 3; }
+  #localVideo.beauty { filter: brightness(1.12) saturate(1.15) blur(0.4px); }
+  .peer-label { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(0,0,0,.55); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+  .call-top { position: absolute; top: 76px; left: 14px; z-index: 3; display: flex; gap: 8px; }
+  .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .ctrl-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(6px); }
+  .ctrl.off { background: #ef4444; }
+  .ctrl.wide { width: auto; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 700; }
+  .ctrl.next { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); }
+  .ctrl.end { background: #ef4444; }
+  .gift-tray { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; }
+  .gift-tray::-webkit-scrollbar { display: none; }
+  .gift { flex: 0 0 auto; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 14px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; }
+  .gift .emoji { font-size: 26px; display: block; }
+  .gift .cost { font-size: 11px; color: #ffd166; font-weight: 700; }
+  /* chat drawer */
+  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: #141428; border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
+  #chatLog { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
+  .msg { max-width: 80%; padding: 10px 13px; border-radius: 14px; font-size: 15px; line-height: 1.4; background: #262640; align-self: flex-start; }
+  .msg.me { background: #8b5cf6; align-self: flex-end; }
+  .msg .who { display: block; font-size: 11px; opacity: .7; margin-bottom: 2px; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row input { flex: 1; }
+  /* gift fx + toast */
+  #giftFx { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+  .gift-pop { font-size: 110px; animation: pop 2s ease forwards; text-align: center; }
+  .gift-pop small { display: block; font-size: 18px; font-weight: 700; margin-top: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 20% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1) translateY(-70px); opacity: 0; } }
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: #262640; border: 1px solid #3a3a5e; color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  .fine { font-size: 12px; color: #777; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
+</style>
+</head>
+<body>
+
+<!-- 1. AGE GATE -->
+<div class="screen" id="screen-age">
+  <h1 class="logo">MeetLive</h1>
+  <p class="tagline">Random 1-on-1 video chat with strangers around the world</p>
+  <div class="card">
+    <h2>Are you 18 or older?</h2>
+    <p class="rules">MeetLive is an adults-only video chat. You must be 18+ to use it. By continuing you agree to the community rules: no nudity or sexual content, no harassment, no hate, and no recording other people.</p>
+    <div class="row">
+      <button class="btn" onclick="ageYes()">Yes, I'm 18+</button>
+      <button class="btn ghost" onclick="ageNo()">No</button>
+    </div>
+    <p class="fine" id="ageNoMsg" style="display:none">Sorry — MeetLive is 18+ only.</p>
+  </div>
+</div>
+
+<!-- 2. PROFILE -->
+<div class="screen hidden" id="screen-profile">
+  <h1 class="logo">MeetLive</h1>
+  <p class="tagline">Set up your profile to start matching</p>
+  <div class="card">
+    <label>Your nickname</label>
+    <input type="text" id="nickname" maxlength="20" placeholder="e.g. Ravi">
+    <label>I am</label>
+    <select id="gender">
+      <option value="male">Male</option>
+      <option value="female">Female</option>
+      <option value="other">Prefer not to say</option>
+    </select>
+    <div class="rules">
+      <b>Community rules</b><br>
+      • Be respectful — no nudity, sexual content or harassment<br>
+      • No recording or screenshots of other people<br>
+      • Break the rules and you will be reported and blocked
+    </div>
+    <button class="btn" onclick="startProfile()">Turn on camera &amp; continue</button>
+    <p class="fine">Your video stays between you and the person you're matched with. Nothing is recorded or stored on our servers.</p>
+  </div>
+</div>
+
+<!-- 3. LOBBY -->
+<div class="screen hidden" id="screen-lobby">
+  <div class="topbar">
+    <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
+    <span class="pill">🪙 <b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
+  </div>
+  <div id="trialPill" class="pill hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
+  <video class="preview" id="localVideoLobby" autoplay muted playsinline></video>
+  <button class="match-btn" onclick="findMatch()">▶<br>START</button>
+  <p style="color:#aaa;font-size:14px;text-align:center">Tap Start to match with a random stranger<br>on live video</p>
+  <p class="fine">Tip: open this page in a second browser window to test matching — you need 2 people online to get a match.</p>
+</div>
+
+<!-- 4. SEARCHING -->
+<div class="screen hidden" id="screen-searching">
+  <div class="spinner"></div>
+  <h2>Looking for a stranger…</h2>
+  <p style="color:#aaa;margin-top:8px">Waiting for someone else to tap Start</p>
+  <button class="btn ghost" style="max-width:220px" onclick="cancelFind()">Cancel</button>
+</div>
+
+<!-- 5. CALL -->
+<div class="screen hidden" id="screen-call">
+  <div class="video-wrap">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay muted playsinline></video>
+    <div class="peer-label">🎥 <span id="peerName">Stranger</span></div>
+    <div class="call-top">
+      <span class="pill">🪙 <b id="coinCountCall">0</b></span>
+      <span class="pill hidden" id="trialPillCall">🎉 Gifts free</span>
+    </div>
+    <div id="giftFx"></div>
+    <div class="controls">
+      <div class="gift-tray" id="giftTray"></div>
+      <div class="ctrl-row">
+        <button class="ctrl" id="micBtn" onclick="toggleMic()" title="Mute mic">🎙️</button>
+        <button class="ctrl" id="camBtn" onclick="toggleCam()" title="Camera on/off">📷</button>
+        <button class="ctrl" onclick="toggleFilter()" title="Beauty filter">✨</button>
+        <button class="ctrl" onclick="toggleChat()" title="Chat">💬</button>
+        <button class="ctrl" onclick="reportPeer()" title="Report">🚩</button>
+        <button class="ctrl" onclick="blockPeer()" title="Block">🚫</button>
+      </div>
+      <div class="ctrl-row">
+        <button class="ctrl wide next" onclick="nextStranger()">Next ➜</button>
+        <button class="ctrl wide end" onclick="endCall()">End ✕</button>
+      </div>
+    </div>
+    <div class="chat-drawer hidden" id="chatDrawer">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>Chat with <span id="chatPeerName">Stranger</span></b>
+        <button class="btn small ghost" onclick="toggleChat()">Close</button>
+      </div>
+      <div id="chatLog"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" maxlength="500" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn small" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ---------- config ----------
+const params = new URLSearchParams(location.search);
+// Connects to the same host that served this page (the Node server).
+// Override for testing: ?ws=ws://192.168.1.5:3000
+const WS_URL = params.get('ws') || ((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+
+// Gifts must match the server's catalog (server.js).
+const GIFTS = [
+  { id: 'rose',    emoji: '🌹', name: 'Rose',    cost: 10 },
+  { id: 'heart',   emoji: '❤️', name: 'Heart',   cost: 25 },
+  { id: 'diamond', emoji: '💎', name: 'Diamond', cost: 50 },
+  { id: 'crown',   emoji: '👑', name: 'Crown',   cost: 100 },
+  { id: 'rocket',  emoji: '🚀', name: 'Rocket',  cost: 200 },
+];
+
+// ---------- state ----------
+let ws = null, pc = null, localStream = null;
+let myId = null, myCoins = 0, myNickname = 'Guest', myGender = 'other';
+let peerId = null, peerName = 'Stranger';
+let micOn = true, camOn = true, filterOn = false;
+let freeTrial = false;
+
+const $ = (id) => document.getElementById(id);
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function setCoins(n) {
+  myCoins = n;
+  $('coinCount').textContent = n;
+  $('coinCountCall').textContent = n;
+}
+function send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+
+// ---------- screens ----------
+function ageYes() { show('screen-profile'); }
+function ageNo() { $('ageNoMsg').style.display = 'block'; }
+
+async function startProfile() {
+  myNickname = ($('nickname').value || '').trim() || ('Guest' + Math.floor(1000 + Math.random() * 9000));
+  myGender = $('gender').value;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+  } catch (e) {
+    toast('Camera / mic blocked — allow access in your browser to video chat.');
+    return;
+  }
+  $('localVideo').srcObject = localStream;
+  $('localVideoLobby').srcObject = localStream;
+  connect();
+  show('screen-lobby');
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => send({ type: 'join', nickname: myNickname, gender: myGender });
+  ws.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch {} };
+  ws.onclose = () => toast('Disconnected from server — check your connection and reload.');
+  ws.onerror = () => toast('Could not reach the server.');
+}
+
+// ---------- signaling ----------
+function handle(msg) {
+  switch (msg.type) {
+    case 'welcome':
+      myId = msg.id; setCoins(msg.coins);
+      if (msg.freeTrial) {
+        freeTrial = true;
+        $('trialPill').classList.remove('hidden');
+        $('trialPillCall').classList.remove('hidden');
+        renderGifts();
+        toast('Free trial is on — all gifts are free! 🎉');
+      }
+      break;
+    case 'online': $('onlineCount').textContent = msg.count; break;
+    case 'coins': setCoins(msg.coins); break;
+    case 'searching': show('screen-searching'); break;
+    case 'matched':
+      peerId = msg.peer.id;
+      peerName = msg.peer.nickname || 'Stranger';
+      $('peerName').textContent = peerName;
+      $('chatPeerName').textContent = peerName;
+      $('chatLog').innerHTML = '';
+      show('screen-call');
+      startCall(msg.initiator);
+      break;
+    case 'offer': onOffer(msg.data); break;
+    case 'answer': if (pc) pc.setRemoteDescription(new RTCSessionDescription(msg.data)).catch(() => {}); break;
+    case 'ice':
+      if (pc && msg.data) pc.addIceCandidate(new RTCIceCandidate(msg.data)).catch(() => {});
+      break;
+    case 'chat': addChatMsg(msg.nickname, msg.text, false); break;
+    case 'gift':
+      giftFx(msg.emoji, msg.nickname + ' sent you a ' + msg.name + '!');
+      toast(msg.nickname + ' sent you a ' + msg.name + ' ' + msg.emoji);
+      break;
+    case 'gift-sent': toast('You sent a ' + msg.name + ' ' + msg.emoji); break;
+    case 'reported': toast('Reported. Our team reviews every report.'); endCallUI(); break;
+    case 'peer-left': {
+      const why = msg.reason === 'next' ? 'Stranger skipped to the next person.'
+        : msg.reason === 'reported' ? 'Stranger was reported.'
+        : msg.reason === 'blocked' ? 'Stranger left.'
+        : 'Stranger left the call.';
+      toast(why);
+      endCallUI();
+      break;
+    }
+    case 'error': toast(msg.message || 'Something went wrong.'); break;
+  }
+}
+
+// ---------- WebRTC ----------
+const RTC_CONFIG = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+]};
+
+function closePC() {
+  if (pc) { try { pc.close(); } catch {} pc = null; }
+  $('remoteVideo').srcObject = null;
+}
+
+async function startCall(initiator) {
+  closePC();
+  pc = new RTCPeerConnection(RTC_CONFIG);
+  if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = (e) => { if (e.streams[0]) $('remoteVideo').srcObject = e.streams[0]; };
+  pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'ice', data: e.candidate }); };
+  if (initiator) {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    send({ type: 'offer', data: offer });
+  }
+}
+
+async function onOffer(offer) {
+  await startCall(false);
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  send({ type: 'answer', data: answer });
+}
+
+function endCallUI() {
+  closePC();
+  peerId = null;
+  $('chatDrawer').classList.add('hidden');
+  show('screen-lobby');
+}
+
+// ---------- call actions ----------
+function findMatch() { send({ type: 'find' }); show('screen-searching'); }
+function cancelFind() { send({ type: 'cancel-find' }); show('screen-lobby'); }
+function nextStranger() { send({ type: 'next' }); closePC(); show('screen-searching'); }
+function endCall() { send({ type: 'leave' }); endCallUI(); }
+
+function toggleMic() {
+  micOn = !micOn;
+  if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  $('micBtn').classList.toggle('off', !micOn);
+  $('micBtn').textContent = micOn ? '🎙️' : '🔇';
+}
+function toggleCam() {
+  camOn = !camOn;
+  if (localStream) localStream.getVideoTracks().forEach(t => t.enabled = camOn);
+  $('camBtn').classList.toggle('off', !camOn);
+  $('camBtn').textContent = camOn ? '📷' : '📵';
+}
+function toggleFilter() {
+  filterOn = !filterOn;
+  $('localVideo').classList.toggle('beauty', filterOn);
+  toast(filterOn ? 'Beauty filter on ✨' : 'Beauty filter off');
+}
+function toggleChat() { $('chatDrawer').classList.toggle('hidden'); }
+
+function sendChat() {
+  const inp = $('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  addChatMsg('You', text, true);
+  inp.value = '';
+}
+function addChatMsg(who, text, me) {
+  const log = $('chatLog');
+  const div = document.createElement('div');
+  div.className = 'msg' + (me ? ' me' : '');
+  const whoEl = document.createElement('span');
+  whoEl.className = 'who';
+  whoEl.textContent = who;
+  div.appendChild(whoEl);
+  div.appendChild(document.createTextNode(text));
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ---------- gifts ----------
+function renderGifts() {
+  const tray = $('giftTray');
+  tray.innerHTML = '';
+  GIFTS.forEach(g => {
+    const b = document.createElement('button');
+    b.className = 'gift';
+    const costLabel = freeTrial ? 'FREE' : '🪙 ' + g.cost;
+    b.innerHTML = '<span class="emoji">' + g.emoji + '</span>' + g.name + '<br><span class="cost">' + costLabel + '</span>';
+    b.onclick = () => sendGift(g.id);
+    tray.appendChild(b);
+  });
+}
+function sendGift(id) {
+  if (!peerId) return;
+  send({ type: 'gift', gift: id });
+}
+function giftFx(emoji, label) {
+  const fx = $('giftFx');
+  const div = document.createElement('div');
+  div.className = 'gift-pop';
+  div.innerHTML = emoji + '<small>' + label.replace(/</g, '&lt;') + '</small>';
+  fx.appendChild(div);
+  setTimeout(() => div.remove(), 2100);
+}
+
+// ---------- safety ----------
+function reportPeer() {
+  if (!peerId) return;
+  const reason = prompt('Report this person — why?\n1: Inappropriate / sexual content\n2: Harassment\n3: Underage\n4: Other\n\nType 1, 2, 3 or 4:', '1');
+  if (reason === null) return;
+  const map = { '1': 'inappropriate-content', '2': 'harassment', '3': 'underage', '4': 'other' };
+  send({ type: 'report', reason: map[reason] || 'other' });
+}
+function blockPeer() {
+  if (!peerId) return;
+  send({ type: 'block' });
+  toast('Blocked — you will never match with this person again.');
+  endCallUI();
+}
+function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins 🪙'); }
+
+renderGifts();
+show('screen-age');
+</script>
+</body>
+</html>
