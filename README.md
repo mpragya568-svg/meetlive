@@ -112,8 +112,9 @@ sign in, and the server itself rejects any connection without a valid
 Google session, so the requirement cannot be bypassed from the browser.
 The buttons only appear after you add the credentials below.
 
-A signed-in user gets their real name (and Google photo) as their profile,
-and a **✓** badge next to their name on the other person's screen.
+A signed-in user gets their Google name pre-filled as their display name
+(which they can edit) and a photo, plus a **✓** badge next to their name
+on the other person's screen.
 The server verifies every sign-in itself (Google ID token via Google,
 Apple code + id_token via Apple) before trusting it — the browser never
 decides who someone is.

@@ -4,33 +4,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>MeetLive — Random Video Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f0f1a; color: #fff; min-height: 100vh; overflow-x: hidden; }
+  body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; min-height: 100vh; overflow-x: hidden; background: radial-gradient(600px 400px at 15% -5%, rgba(255,77,141,.16), transparent 60%), radial-gradient(700px 500px at 90% 110%, rgba(139,92,246,.18), transparent 60%), radial-gradient(400px 300px at 85% 0%, rgba(99,102,241,.12), transparent 60%), #0a0a15; background-attachment: fixed; }
   .hidden { display: none !important; }
-  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-  h1.logo { font-size: 44px; font-weight: 800; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .tagline { color: #aaa; margin: 8px 0 28px; text-align: center; }
-  .card { background: #1a1a2e; border: 1px solid #2a2a44; border-radius: 18px; padding: 24px; width: 100%; max-width: 380px; }
-  .card h2 { font-size: 20px; margin-bottom: 14px; }
-  label { display: block; font-size: 13px; color: #aaa; margin: 12px 0 6px; }
-  input[type=text], select { width: 100%; padding: 13px; border-radius: 12px; border: 1px solid #333; background: #121220; color: #fff; font-size: 16px; outline: none; }
-  input[type=text]:focus, select:focus { border-color: #8b5cf6; }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; animation: fadeUp .45s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px; }
+  .brand .logo-mark { width: 46px; height: 46px; filter: drop-shadow(0 8px 18px rgba(139,92,246,.5)); }
+  .brand .wordmark { font-size: 36px; font-weight: 800; letter-spacing: -.5px; }
+  .brand .wordmark em { font-style: normal; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand.sm { margin-bottom: 16px; }
+  .brand.sm .logo-mark { width: 30px; height: 30px; }
+  .brand.sm .wordmark { font-size: 21px; }
+  .tagline { color: #a5a5b8; margin: 8px 0 28px; text-align: center; }
+  .card { background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.09); border-radius: 24px; padding: 28px; width: 100%; max-width: 380px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+  .card h2 { font-size: 20px; margin-bottom: 14px; font-weight: 800; letter-spacing: -.3px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #9a9ab0; margin: 12px 0 6px; }
+  input[type=text], select { width: 100%; padding: 13px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); color: #fff; font-size: 16px; outline: none; }
+  input[type=text]:focus, select:focus { border-color: #ff4d8d; box-shadow: 0 0 0 3px rgba(255,77,141,.18); }
+  input:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
   .rules { font-size: 13px; color: #bbb; line-height: 1.6; margin: 14px 0; }
   .rules b { color: #fff; }
-  .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; color: #fff; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); margin-top: 12px; }
+  .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 17px; font-weight: 700; cursor: pointer; color: #fff; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); margin-top: 12px; box-shadow: 0 10px 28px rgba(255,77,141,.35); transition: transform .15s, box-shadow .15s, filter .15s; font-family: inherit; }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 14px 34px rgba(255,77,141,.45); }
   .btn:active { transform: scale(0.98); }
-  .btn.ghost { background: #262640; }
+  .btn:disabled { opacity: .45; box-shadow: none; cursor: not-allowed; transform: none; filter: none; }
+  .btn.ghost { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); box-shadow: none; }
   .btn.small { width: auto; padding: 10px 18px; font-size: 15px; margin-top: 0; }
   .row { display: flex; gap: 10px; }
   .row .btn { flex: 1; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; background: #1a1a2e; border: 1px solid #2a2a44; border-radius: 999px; padding: 8px 14px; font-size: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 8px 14px; font-size: 14px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .pill.gold { border-color: rgba(255,209,102,.45); color: #ffd166; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
   .topbar { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .match-btn { width: 190px; height: 190px; border-radius: 50%; border: 4px solid #ff4d8d; background: radial-gradient(circle at 35% 30%, #ff4d8d, #8b5cf6); color: #fff; font-size: 22px; font-weight: 800; cursor: pointer; box-shadow: 0 0 40px rgba(255,77,141,.45); margin: 26px 0; }
-  .match-btn:active { transform: scale(0.96); }
-  .preview { width: 100%; max-width: 380px; aspect-ratio: 3/4; border-radius: 18px; object-fit: cover; background: #000; border: 1px solid #2a2a44; }
-  .spinner { width: 54px; height: 54px; border: 5px solid #2a2a44; border-top-color: #ff4d8d; border-radius: 50%; animation: spin 1s linear infinite; margin: 24px 0; }
+  .match-btn { width: 190px; height: 190px; border-radius: 50%; border: 4px solid rgba(255,255,255,.25); background: radial-gradient(circle at 35% 30%, #ff4d8d, #8b5cf6); color: #fff; font-size: 22px; font-weight: 800; cursor: pointer; box-shadow: 0 0 40px rgba(255,77,141,.45); margin: 26px 0; animation: pulse 2.4s ease-in-out infinite; font-family: inherit; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 40px rgba(255,77,141,.45); } 50% { box-shadow: 0 0 70px rgba(255,77,141,.75), 0 0 0 12px rgba(255,77,141,.08); } }
+  .preview { width: 100%; max-width: 380px; aspect-ratio: 3/4; border-radius: 24px; object-fit: cover; background: #000; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  .spinner { width: 54px; height: 54px; border: 5px solid rgba(255,255,255,.12); border-top-color: #ff4d8d; border-radius: 50%; animation: spin 1s linear infinite; margin: 24px 0; box-shadow: 0 0 24px rgba(255,77,141,.25); }
   @keyframes spin { to { transform: rotate(360deg); } }
   /* call screen */
   #screen-call { padding: 0; justify-content: flex-start; }
@@ -38,25 +52,28 @@
   #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
   #localVideo { position: absolute; top: 14px; right: 14px; width: 108px; aspect-ratio: 3/4; object-fit: cover; border-radius: 14px; border: 2px solid #fff; background: #000; z-index: 3; }
   #localVideo.beauty { filter: brightness(1.12) saturate(1.15) blur(0.4px); }
-  .peer-label { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(0,0,0,.55); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+  .match-btn:active { transform: scale(0.96); }
+  .peer-label { position: absolute; top: 14px; left: 14px; z-index: 3; background: rgba(10,10,20,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.14); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
   .call-top { position: absolute; top: 76px; left: 14px; z-index: 3; display: flex; gap: 8px; }
   .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
   .ctrl-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; backdrop-filter: blur(6px); }
+  .ctrl { width: 56px; height: 56px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); font-size: 24px; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); transition: transform .15s; }
+  .ctrl:hover { transform: scale(1.06); }
   .ctrl.off { background: #ef4444; }
   .ctrl.wide { width: auto; padding: 0 22px; border-radius: 999px; font-size: 16px; font-weight: 700; }
-  .ctrl.next { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); }
+  .ctrl.next { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); box-shadow: 0 8px 22px rgba(255,77,141,.4); }
   .ctrl.end { background: #ef4444; }
   .gift-tray { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; }
   .gift-tray::-webkit-scrollbar { display: none; }
-  .gift { flex: 0 0 auto; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 14px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; }
+  .gift { flex: 0 0 auto; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; transition: transform .15s; }
+  .gift:hover { transform: translateY(-2px); }
   .gift .emoji { font-size: 26px; display: block; }
   .gift .cost { font-size: 11px; color: #ffd166; font-weight: 700; }
   /* chat drawer */
-  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: #141428; border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
+  .chat-drawer { position: absolute; left: 0; right: 0; bottom: 0; top: 30%; z-index: 5; background: rgba(20,20,40,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.1); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 14px; }
   #chatLog { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
   .msg { max-width: 80%; padding: 10px 13px; border-radius: 14px; font-size: 15px; line-height: 1.4; background: #262640; align-self: flex-start; }
-  .msg.me { background: #8b5cf6; align-self: flex-end; }
+  .msg.me { background: linear-gradient(135deg, #ff4d8d, #8b5cf6); align-self: flex-end; }
   .msg .who { display: block; font-size: 11px; opacity: .7; margin-bottom: 2px; }
   .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
   .chat-input-row input { flex: 1; }
@@ -65,16 +82,14 @@
   .gift-pop { font-size: 110px; animation: pop 2s ease forwards; text-align: center; }
   .gift-pop small { display: block; font-size: 18px; font-weight: 700; margin-top: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
   @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 20% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1) translateY(-70px); opacity: 0; } }
-  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: #262640; border: 1px solid #3a3a5e; color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: rgba(20,20,35,.92); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 12px 32px rgba(0,0,0,.5); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
-  .fine { font-size: 12px; color: #777; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
+  .fine { font-size: 12px; color: #8a8a9e; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
   .btn.apple-btn { background: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
   .btn.apple-btn svg { width: 18px; height: 18px; fill: #fff; flex: 0 0 auto; }
   #googleBtn { display: flex; justify-content: center; }
   #googleBtn > div { width: 100% !important; }
-  .divider { display: flex; align-items: center; gap: 10px; color: #777; font-size: 12px; margin: 16px 0 4px; }
-  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2a2a44; }
-  .signedin { display: flex; align-items: center; gap: 12px; background: #12122a; border: 1px solid #2a2a44; border-radius: 14px; padding: 12px; margin-bottom: 6px; }
+  .signedin { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 18px; padding: 12px; margin-bottom: 6px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
   .signedin img, .signedin .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #333; flex: 0 0 auto; }
   .signedin .avatar { display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); }
   .signedin .who { flex: 1; min-width: 0; }
@@ -85,9 +100,27 @@
 </head>
 <body>
 
+<!-- MeetLive logo (reused on every screen via <use>) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff4d8d"/>
+      <stop offset=".55" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <symbol id="logoMark" viewBox="0 0 48 48">
+      <rect width="48" height="48" rx="13" fill="url(#logoGrad)"/>
+      <path d="M20 16 L20 32 L34 24 Z" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
 <!-- 1. AGE GATE -->
 <div class="screen" id="screen-age">
-  <h1 class="logo">MeetLive</h1>
+  <div class="brand">
+    <svg class="logo-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#logoMark"/></svg>
+    <span class="wordmark">Meet<em>Live</em></span>
+  </div>
   <p class="tagline">Random 1-on-1 video chat with strangers around the world</p>
   <div class="card">
     <h2>Are you 18 or older?</h2>
@@ -102,7 +135,10 @@
 
 <!-- 2. PROFILE -->
 <div class="screen hidden" id="screen-profile">
-  <h1 class="logo">MeetLive</h1>
+  <div class="brand">
+    <svg class="logo-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#logoMark"/></svg>
+    <span class="wordmark">Meet<em>Live</em></span>
+  </div>
   <p class="tagline">Set up your profile to start matching</p>
   <div class="card">
     <div id="authBox" class="hidden">
@@ -120,7 +156,7 @@
       <div class="who"><b id="signedInName"></b><span id="signedInEmail"></span></div>
       <button onclick="signOut()">Sign out</button>
     </div>
-    <label>Your nickname</label>
+    <label>Your display name</label>
     <input type="text" id="nickname" maxlength="20" placeholder="e.g. Ravi" disabled>
     <label>I am</label>
     <select id="gender" disabled>
@@ -141,11 +177,15 @@
 
 <!-- 3. LOBBY -->
 <div class="screen hidden" id="screen-lobby">
+  <div class="brand sm">
+    <svg class="logo-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#logoMark"/></svg>
+    <span class="wordmark">Meet<em>Live</em></span>
+  </div>
   <div class="topbar">
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
     <span class="pill">🪙 <b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
   </div>
-  <div id="trialPill" class="pill hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
+  <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview" id="localVideoLobby" autoplay muted playsinline></video>
   <button class="match-btn" onclick="findMatch()">▶<br>START</button>
   <p style="color:#aaa;font-size:14px;text-align:center">Tap Start to match with a random stranger<br>on live video</p>
@@ -168,7 +208,7 @@
     <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span></div>
     <div class="call-top">
       <span class="pill">🪙 <b id="coinCountCall">0</b></span>
-      <span class="pill hidden" id="trialPillCall">🎉 Gifts free</span>
+      <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
     </div>
     <div id="giftFx"></div>
     <div class="controls">
@@ -236,9 +276,9 @@ let authConfig = { googleClientId: null, appleClientId: null };
 let authBlocked = false; // server rejected this connection (no valid Google session)
 
 // Google sign-in is required: the profile form stays locked until signed in.
-// Your nickname always comes from Google, so that field stays read-only.
+// Your display name is editable once signed in (pre-filled from Google).
 function setProfileFormEnabled(enabled) {
-  $('nickname').disabled = true;
+  $('nickname').disabled = !enabled;
   $('gender').disabled = !enabled;
   $('continueBtn').disabled = !enabled;
   $('signinHint').classList.toggle('hidden', enabled);

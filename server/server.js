@@ -235,7 +235,11 @@ wss.on('connection', (ws) => {
           break;
         }
         user.verified = profile;
-        user.nickname = profile.name.slice(0, 20);
+        // Display name is editable after sign-in: use the typed name when
+        // given, otherwise the Google name. The ✓ badge stays — the user
+        // is still a verified Google account.
+        const displayName = String(msg.nickname || '').trim().slice(0, 20);
+        user.nickname = displayName || profile.name.slice(0, 20);
         user.gender = ['male', 'female', 'other'].includes(msg.gender) ? msg.gender : 'other';
         break;
       }
