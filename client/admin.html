@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeetLive — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; min-height: 100vh; background: radial-gradient(600px 400px at 15% -5%, rgba(255,77,141,.16), transparent 60%), radial-gradient(700px 500px at 90% 110%, rgba(139,92,246,.18), transparent 60%), #0a0a15; background-attachment: fixed; padding: 20px; }
+  .hidden { display: none !important; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
+  h1 em { font-style: normal; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: #9a9ab0; font-size: 14px; margin-top: 4px; }
+  .card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 18px; margin-bottom: 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .card h2 { font-size: 17px; margin-bottom: 12px; }
+  .card h2 span { color: #9a9ab0; font-weight: 600; font-size: 13px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 14px; }
+  .stat b { display: block; font-size: 26px; font-weight: 800; }
+  .stat span { font-size: 12px; color: #9a9ab0; font-weight: 600; }
+  .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); }
+  .pill.gold { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); border-color: transparent; }
+  .pill.red { background: #ef4444; border-color: transparent; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn { background: linear-gradient(90deg, #ff4d8d, #8b5cf6); border: none; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 18px; border-radius: 999px; cursor: pointer; }
+  .btn.ghost { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); }
+  .btn.danger { background: #ef4444; }
+  .btn.small { padding: 7px 13px; font-size: 13px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  input[type=datetime-local], input[type=email] { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: #fff; outline: none; font-family: inherit; color-scheme: dark; }
+  input[type=email] { flex: 1; min-width: 200px; }
+  label.switch { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; cursor: pointer; }
+  label.switch input { width: 20px; height: 20px; accent-color: #ff4d8d; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,.07); vertical-align: middle; }
+  th { color: #9a9ab0; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  td .email { color: #9a9ab0; font-size: 12px; word-break: break-all; }
+  .status { font-weight: 700; font-size: 13px; }
+  .status.in-call { color: #4ade80; }
+  .status.waiting { color: #ffd166; }
+  .status.idle { color: #9a9ab0; }
+  .empty { color: #9a9ab0; font-size: 14px; padding: 8px 0; }
+  .report { border-bottom: 1px solid rgba(255,255,255,.07); padding: 10px 0; font-size: 14px; line-height: 1.5; }
+  .report:last-child { border-bottom: none; }
+  .report .meta { color: #9a9ab0; font-size: 12px; }
+  .report .reason { display: inline-block; background: rgba(255,77,141,.15); border: 1px solid rgba(255,77,141,.3); color: #ff8fb0; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-left: 6px; }
+  .fine { font-size: 12px; color: #8a8a9e; text-align: center; margin-top: 8px; line-height: 1.5; }
+  #googleBtn { display: flex; justify-content: center; margin-top: 14px; }
+  .notice { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); color: #fca5a5; border-radius: 14px; padding: 14px; font-size: 14px; line-height: 1.5; margin-top: 14px; }
+  .who { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .who img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+  .who b { display: block; font-size: 14px; }
+  .who span { font-size: 12px; color: #9a9ab0; }
+  .who button { background: none; border: none; color: #ff8fb0; font-size: 13px; cursor: pointer; font-family: inherit; }
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: rgba(20,20,35,.92); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 32px rgba(0,0,0,.5); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  @media (max-width: 640px) { table { font-size: 13px; } th:nth-child(3), td:nth-child(3) { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>MeetLive <em>Admin</em></h1>
+      <div class="sub">Manage who's online, reports, bans and the free gift trial.</div>
+    </div>
+    <div class="who hidden" id="whoBox">
+      <img id="whoImg" alt="" class="hidden">
+      <div><b id="whoName"></b><span id="whoEmail"></span></div>
+      <button onclick="signOut()">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Sign in -->
+  <div class="card" id="signinCard">
+    <h2>Sign in to manage MeetLive</h2>
+    <p style="color:#9a9ab0;font-size:14px;line-height:1.5">Only the owner's Google account can open this page. Everyone else gets turned away.</p>
+    <div id="googleBtn"></div>
+    <div class="notice hidden" id="notAdmin">This Google account doesn't have admin access. Sign in with the owner's Google account.</div>
+    <div class="notice hidden" id="authError"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Live now</h2>
+        <span class="row">
+          <span class="pill gold hidden" id="trialPill">🎉 Gifts free</span>
+          <span class="pill" id="uptimePill">—</span>
+          <button class="btn ghost small" onclick="loadAll()">↻ Refresh</button>
+        </span>
+      </div>
+      <div class="stats" style="margin-top:14px">
+        <div class="stat"><b id="stOnline">0</b><span>Online</span></div>
+        <div class="stat"><b id="stWaiting">0</b><span>Waiting for a match</span></div>
+        <div class="stat"><b id="stInCall">0</b><span>In calls</span></div>
+        <div class="stat"><b id="stMatches">0</b><span>Matches (this run)</span></div>
+        <div class="stat"><b id="stMessages">0</b><span>Chat messages</span></div>
+        <div class="stat"><b id="stGifts">0</b><span>Gifts sent</span></div>
+      </div>
+      <div class="fine" id="giftBreakdown"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎁 Free gift trial</h2>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="trialToggle"> Gifts are free</label>
+        <input type="datetime-local" id="trialUntil">
+        <button class="btn" onclick="saveTrial()">Save</button>
+      </div>
+      <div class="fine" id="trialStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>👥 People online <span id="userCount"></span></h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Gender</th><th>Coins</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+          <tbody id="userRows"></tbody>
+        </table>
+      </div>
+      <div class="empty hidden" id="noUsers">Nobody is online right now.</div>
+    </div>
+
+    <div class="card">
+      <h2>🚩 Reports <span id="reportCount"></span></h2>
+      <div id="reportList"></div>
+      <div class="empty hidden" id="noReports">No reports yet. When someone reports a stranger, it shows up here.</div>
+    </div>
+
+    <div class="card">
+      <h2>🚫 Banned accounts <span id="banCount"></span></h2>
+      <div class="row" style="margin-bottom:12px">
+        <input type="email" id="banEmail" placeholder="email@example.com — ban an account directly">
+        <button class="btn danger" onclick="banByEmail()">Ban</button>
+      </div>
+      <div id="banList"></div>
+      <div class="empty hidden" id="noBans">Nobody is banned.</div>
+      <div class="fine">Banned accounts can't sign in or join. Bans are stored on the server and reset if the site is redeployed.</div>
+    </div>
+  </div>
+
+  <div class="fine">MeetLive admin · <a href="/" style="color:#ff8fb0">Back to MeetLive</a></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+let sessionToken = localStorage.getItem('meetlive_admin_session') || '';
+let myProfile = null;
+let refreshTimer = 0;
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.defer = true;
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+async function api(path, opts) {
+  const r = await fetch(path, {
+    ...(opts || {}),
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sessionToken, ...(opts && opts.headers ? opts.headers : {}) },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('Request failed (' + r.status + ')'));
+  return data;
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function timeAgo(ts) {
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString(); } catch { return iso || ''; }
+}
+function isoToLocal(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+async function initAuth() {
+  let cfg = {};
+  try { cfg = await (await fetch('/config')).json(); } catch { return; }
+  if (!cfg.googleClientId) {
+    $('authError').textContent = 'Google sign-in is not configured on this server yet.';
+    $('authError').classList.remove('hidden');
+    return;
+  }
+  try {
+    await loadScript('https://accounts.google.com/gsi/client');
+    google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: onGoogleSignIn });
+    google.accounts.id.renderButton($('googleBtn'), { theme: 'outline', size: 'large', width: 320, text: 'signin_with' });
+  } catch {}
+  if (sessionToken) enterDashboard();
+}
+async function onGoogleSignIn(response) {
+  try {
+    const data = await (await fetch('/auth/google', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: response.credential }),
+    })).json();
+    if (!data.ok) throw new Error(data.error || 'Sign-in failed.');
+    sessionToken = data.session;
+    myProfile = data.profile;
+    localStorage.setItem('meetlive_admin_session', sessionToken);
+    enterDashboard();
+  } catch (e) {
+    $('authError').textContent = e.message;
+    $('authError').classList.remove('hidden');
+  }
+}
+function signOut() {
+  sessionToken = '';
+  myProfile = null;
+  localStorage.removeItem('meetlive_admin_session');
+  clearInterval(refreshTimer);
+  location.reload();
+}
+async function enterDashboard() {
+  $('notAdmin').classList.add('hidden');
+  $('authError').classList.add('hidden');
+  try {
+    // Prove this session is the admin's before showing anything.
+    await api('/admin/api/stats');
+  } catch (e) {
+    $('notAdmin').classList.remove('hidden');
+    $('signinCard').classList.remove('hidden');
+    $('dashboard').classList.add('hidden');
+    return;
+  }
+  if (myProfile) {
+    $('whoBox').classList.remove('hidden');
+    $('whoName').textContent = myProfile.name || 'Admin';
+    $('whoEmail').textContent = myProfile.email || '';
+    if (myProfile.picture) { $('whoImg').src = myProfile.picture; $('whoImg').classList.remove('hidden'); }
+  }
+  $('signinCard').classList.add('hidden');
+  $('dashboard').classList.remove('hidden');
+  await loadAll();
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadAll, 10000); // live-ish: refresh every 10s
+}
+
+async function loadAll() {
+  try {
+    const [st, users, reports, bans] = await Promise.all([
+      api('/admin/api/stats'),
+      api('/admin/api/users'),
+      api('/admin/api/reports'),
+      api('/admin/api/bans'),
+    ]);
+    renderStats(st);
+    renderUsers(users.users || []);
+    renderReports(reports.reports || []);
+    renderBans(bans.bans || []);
+  } catch (e) {
+    if (String(e.message).includes('403') || String(e.message).includes('Admin access')) {
+      clearInterval(refreshTimer);
+      $('dashboard').classList.add('hidden');
+      $('signinCard').classList.remove('hidden');
+      $('notAdmin').classList.remove('hidden');
+    }
+  }
+}
+function renderStats(st) {
+  $('stOnline').textContent = st.online;
+  $('stWaiting').textContent = st.waiting;
+  $('stInCall').textContent = st.inCall;
+  $('stMatches').textContent = st.totalMatches;
+  $('stMessages').textContent = st.totalMessages;
+  $('stGifts').textContent = st.totalGifts;
+  $('trialPill').classList.toggle('hidden', !st.trialActive);
+  $('uptimePill').textContent = 'Up ' + Math.floor(st.uptimeSec / 60) + 'm · ' + fmtTime(st.serverTime);
+  const parts = Object.entries(st.giftCounts || {}).map(([k, n]) => {
+    const g = (st.gifts && st.gifts[k]) || { name: k, emoji: '🎁', cost: 0 };
+    return g.emoji + ' ' + g.name + ' ×' + n;
+  });
+  $('giftBreakdown').textContent = parts.length ? 'Gifts this run: ' + parts.join(' · ') : 'No gifts sent yet this run.';
+  $('trialToggle').checked = !!st.trialSetting;
+  $('trialUntil').value = isoToLocal(st.trialUntil);
+  $('trialStatus').textContent = st.trialActive
+    ? 'Free trial is ON — all gifts cost 0 coins until ' + fmtTime(st.trialUntil) + '.'
+    : 'Free trial is OFF — gifts cost their normal coin price.';
+}
+function renderUsers(users) {
+  $('userCount').textContent = '(' + users.length + ')';
+  $('noUsers').classList.toggle('hidden', users.length > 0);
+  $('userRows').innerHTML = users.map(u => '<tr>' +
+    '<td><b>' + esc(u.nickname) + '</b><br><span class="email">#' + u.id + (u.partnerId ? ' ↔ #' + u.partnerId : '') + '</span></td>' +
+    '<td><span class="email">' + esc(u.email) + '</span></td>' +
+    '<td>' + esc(u.gender) + '</td>' +
+    '<td>' + u.coins + '</td>' +
+    '<td><span class="status ' + u.status + '">' + u.status + '</span></td>' +
+    '<td>' + timeAgo(u.joinedAt) + '</td>' +
+    '<td style="white-space:nowrap"><button class="btn ghost small" onclick="kickUser(' + u.id + ')">Kick</button> ' +
+    '<button class="btn danger small" onclick="banUser(' + u.id + ', \'' + esc(u.email).replace(/'/g, '') + '\')">Ban</button></td>' +
+    '</tr>').join('');
+}
+function renderReports(reports) {
+  $('reportCount').textContent = '(' + reports.length + ')';
+  $('noReports').classList.toggle('hidden', reports.length > 0);
+  $('reportList').innerHTML = reports.map(r => '<div class="report">' +
+    '<div><b>' + esc(r.reporterName || ('#' + r.reporter)) + '</b> reported <b>' + esc(r.reportedName || ('#' + r.reported)) + '</b>' +
+    '<span class="reason">' + esc(r.reason || 'other') + '</span></div>' +
+    '<div class="meta">' + fmtTime(r.time) +
+    (r.reportedEmail ? ' · ' + esc(r.reportedEmail) : '') + '</div>' +
+    '<div style="margin-top:6px"><button class="btn danger small" onclick="banUser(' + (r.reported || 0) + ', \'' + esc(r.reportedEmail || '').replace(/'/g, '') + '\')">Ban reported</button></div>' +
+    '</div>').join('');
+}
+function renderBans(bans) {
+  $('banCount').textContent = '(' + bans.length + ')';
+  $('noBans').classList.toggle('hidden', bans.length > 0);
+  $('banList').innerHTML = bans.map(b => '<div class="report"><div><b>' + esc(b.email) + '</b></div>' +
+    '<div class="meta">Banned ' + fmtTime(b.bannedAt) + (b.bannedBy ? ' by ' + esc(b.bannedBy) : '') + '</div>' +
+    '<div style="margin-top:6px"><button class="btn ghost small" onclick="unbanUser(\'' + esc(b.email).replace(/'/g, '') + '\')">Unban</button></div></div>').join('');
+}
+async function kickUser(id) {
+  if (!confirm('Kick this person off MeetLive right now?')) return;
+  try { await api('/admin/api/kick', { method: 'POST', body: JSON.stringify({ userId: id }) }); toast('Kicked.'); loadAll(); }
+  catch (e) { toast(e.message); }
+}
+async function banUser(id, email) {
+  if (!confirm('Ban this account? They will not be able to sign in or join again.')) return;
+  try {
+    const r = await api('/admin/api/ban', { method: 'POST', body: JSON.stringify({ userId: id || undefined, email: email || undefined }) });
+    toast('Banned ' + (r.banned || email || '') + '.');
+    loadAll();
+  } catch (e) { toast(e.message); }
+}
+async function banByEmail() {
+  const email = $('banEmail').value.trim();
+  if (!email) { toast('Type an email first.'); return; }
+  await banUser(0, email);
+  $('banEmail').value = '';
+}
+async function unbanUser(email) {
+  if (!confirm('Unban ' + email + '?')) return;
+  try { await api('/admin/api/unban', { method: 'POST', body: JSON.stringify({ email }) }); toast('Unbanned.'); loadAll(); }
+  catch (e) { toast(e.message); }
+}
+async function saveTrial() {
+  const active = $('trialToggle').checked;
+  const until = $('trialUntil').value ? new Date($('trialUntil').value).toISOString() : undefined;
+  try {
+    const r = await api('/admin/api/trial', { method: 'POST', body: JSON.stringify({ active, until }) });
+    toast(r.trialActive ? 'Free trial is ON.' : 'Free trial is OFF.');
+    loadAll();
+  } catch (e) { toast(e.message); }
+}
+initAuth();
+</script>
+</body>
+</html>

@@ -21,12 +21,34 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 3000;
 const START_COINS = 100; // coins every new visitor starts with (demo coins)
 
+// ---- admin portal ----
+// The admin portal (/admin) is only for the Google account below.
+// Change it with the ADMIN_EMAIL env var on Render.
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'ravicharan319@gmail.com').toLowerCase();
+function isAdmin(profile) { return !!profile && profile.provider === 'google' && (profile.email || '').toLowerCase() === ADMIN_EMAIL; }
+
+// Admin settings that survive a server restart (bans + free trial).
+// NOTE: on Render's free tier the disk is ephemeral, so these reset when the
+// site is redeployed or the instance restarts. The file is the best we can
+// do without a database.
+const ADMIN_CONFIG_PATH = path.join(__dirname, 'admin-config.json');
+let adminConfig = { trialActive: true, trialUntil: '2026-11-13T23:59:59-05:00', bans: [] };
+try {
+  const saved = JSON.parse(fs.readFileSync(ADMIN_CONFIG_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') {
+    adminConfig = { ...adminConfig, ...saved, bans: Array.isArray(saved.bans) ? saved.bans : [] };
+  }
+} catch {}
+function saveAdminConfig() { try { fs.writeFileSync(ADMIN_CONFIG_PATH, JSON.stringify(adminConfig, null, 2)); } catch {} }
+const bannedEmails = new Set(adminConfig.bans.map(b => String(b.email || '').toLowerCase()).filter(Boolean));
+function isBannedEmail(email) { return !!email && bannedEmails.has(String(email).toLowerCase()); }
+
 // ---- free trial ----
 // While the trial is active, all gifts are FREE (cost 0 coins) so people can
-// gift as much as they like. Turn it off by setting FREE_TRIAL to false,
-// or extend it by moving FREE_TRIAL_UNTIL to a later date.
-const FREE_TRIAL = true;
-const FREE_TRIAL_UNTIL = new Date('2026-11-13T23:59:59-05:00'); // trial ends Nov 13, 2026
+// gift as much as they like. The admin portal can turn it off or extend it;
+// the setting is stored in admin-config.json.
+let FREE_TRIAL = adminConfig.trialActive !== false;
+let FREE_TRIAL_UNTIL = new Date(adminConfig.trialUntil || '2026-11-13T23:59:59-05:00');
 function trialActive() { return FREE_TRIAL && new Date() < FREE_TRIAL_UNTIL; }
 
 // Gifts catalog — same list the client shows. Cost in coins.
@@ -153,6 +175,108 @@ app.post('/auth/apple', async (req, res) => {
   }
 });
 
+// ---- Admin portal API ----
+// Every route here needs a Google session for the admin account.
+// The admin page sends it as: Authorization: Bearer <session token>.
+function requireAdmin(req, res, next) {
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const profile = getSession(token);
+  if (!profile || !isAdmin(profile)) return res.status(403).json({ error: 'Admin access only.' });
+  req.adminProfile = profile;
+  next();
+}
+function findUserById(id) {
+  for (const u of clients.values()) if (u.id === id) return u;
+  return null;
+}
+function kickUser(user, reason) {
+  endPair(user, reason || 'kicked');
+  removeFromWaiting(user);
+  try { user.ws.close(); } catch {}
+}
+function readReports() {
+  try {
+    const lines = fs.readFileSync(path.join(__dirname, 'reports.log'), 'utf8').trim().split('\n').filter(Boolean);
+    return lines.slice(-100).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).reverse();
+  } catch { return [...reports].reverse(); }
+}
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'admin.html')));
+app.get('/admin/api/stats', requireAdmin, (req, res) => {
+  res.json({
+    online: clients.size,
+    waiting: waiting.length,
+    inCall: pairs.size / 2,
+    totalMatches: stats.totalMatches,
+    totalMessages: stats.totalMessages,
+    totalGifts: stats.totalGifts,
+    giftCounts: stats.giftCounts,
+    gifts: Object.fromEntries(Object.entries(GIFTS).map(([k, g]) => [k, { name: g.name, emoji: g.emoji, cost: g.cost }])),
+    trialActive: trialActive(),
+    trialSetting: FREE_TRIAL,
+    trialUntil: FREE_TRIAL_UNTIL.toISOString(),
+    uptimeSec: Math.floor((Date.now() - stats.startedAt) / 1000),
+    serverTime: new Date().toISOString(),
+  });
+});
+app.get('/admin/api/users', requireAdmin, (req, res) => {
+  const list = [...clients.values()].map(u => ({
+    id: u.id,
+    nickname: u.nickname,
+    email: u.verified ? u.verified.email : '',
+    gender: u.gender,
+    coins: u.coins,
+    status: pairs.has(u.id) ? 'in-call' : (waiting.includes(u) ? 'waiting' : 'idle'),
+    partnerId: pairs.get(u.id) ? pairs.get(u.id).id : null,
+    joinedAt: u.joinedAt,
+  }));
+  res.json({ users: list });
+});
+app.get('/admin/api/reports', requireAdmin, (req, res) => {
+  res.json({ reports: readReports() });
+});
+app.get('/admin/api/bans', requireAdmin, (req, res) => {
+  res.json({ bans: adminConfig.bans });
+});
+app.post('/admin/api/ban', requireAdmin, (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const userId = Number(req.body?.userId);
+  let target = null;
+  if (userId) target = findUserById(userId);
+  const banEmail = String((target && target.verified ? target.verified.email : email) || '').toLowerCase();
+  if (!banEmail) return res.status(400).json({ error: 'Give a user or an email to ban.' });
+  if (!adminConfig.bans.some(b => String(b.email).toLowerCase() === banEmail)) {
+    adminConfig.bans.push({ email: banEmail, bannedAt: new Date().toISOString(), bannedBy: req.adminProfile.email });
+    bannedEmails.add(banEmail);
+    saveAdminConfig();
+  }
+  if (target) kickUser(target, 'banned');
+  res.json({ ok: true, banned: banEmail });
+});
+app.post('/admin/api/unban', requireAdmin, (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  adminConfig.bans = adminConfig.bans.filter(b => String(b.email).toLowerCase() !== email);
+  bannedEmails.delete(email);
+  saveAdminConfig();
+  res.json({ ok: true });
+});
+app.post('/admin/api/kick', requireAdmin, (req, res) => {
+  const user = findUserById(Number(req.body?.userId));
+  if (!user) return res.status(404).json({ error: 'User is no longer online.' });
+  kickUser(user, 'kicked');
+  res.json({ ok: true });
+});
+app.post('/admin/api/trial', requireAdmin, (req, res) => {
+  if (typeof req.body?.active === 'boolean') FREE_TRIAL = req.body.active;
+  if (req.body?.until) {
+    const d = new Date(req.body.until);
+    if (!isNaN(d)) FREE_TRIAL_UNTIL = d;
+  }
+  adminConfig.trialActive = FREE_TRIAL;
+  adminConfig.trialUntil = FREE_TRIAL_UNTIL.toISOString();
+  saveAdminConfig();
+  res.json({ ok: true, trialActive: trialActive(), trialSetting: FREE_TRIAL, trialUntil: FREE_TRIAL_UNTIL.toISOString() });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
@@ -162,6 +286,9 @@ const clients = new Map(); // ws -> user
 const waiting = [];        // users waiting for a match
 const pairs = new Map();   // userId -> partner user
 const reports = [];        // report log (also appended to reports.log)
+
+// Stats for the admin portal (reset when the server restarts).
+const stats = { totalMatches: 0, totalMessages: 0, totalGifts: 0, giftCounts: {}, startedAt: Date.now() };
 
 function send(ws, obj) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
@@ -196,6 +323,7 @@ function tryMatch(user) {
     waiting.splice(i, 1);
     pairs.set(user.id, other);
     pairs.set(other.id, user);
+    stats.totalMatches++;
     // `user` is the initiator: they create the WebRTC offer.
     send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null }, initiator: true });
     send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null }, initiator: false });
@@ -212,6 +340,7 @@ wss.on('connection', (ws) => {
     gender: 'other',
     coins: START_COINS,
     blocked: new Set(), // user ids this user never wants to match again
+    joinedAt: Date.now(),
   };
   clients.set(ws, user);
   send(ws, { type: 'welcome', id: user.id, coins: user.coins, freeTrial: trialActive() });
@@ -235,6 +364,12 @@ wss.on('connection', (ws) => {
           break;
         }
         user.verified = profile;
+        // Banned accounts cannot join.
+        if (isBannedEmail(profile.email)) {
+          send(ws, { type: 'auth-required', message: 'This account is banned from MeetLive.' });
+          setTimeout(() => { try { ws.close(); } catch {} }, 100);
+          break;
+        }
         // Display name is editable after sign-in: use the typed name when
         // given, otherwise the Google name. The ✓ badge stays — the user
         // is still a verified Google account.
@@ -271,6 +406,7 @@ wss.on('connection', (ws) => {
 
       case 'chat':
         if (partner) {
+          stats.totalMessages++;
           send(partner.ws, { type: 'chat', from: user.id, nickname: user.nickname, text: String(msg.text || '').slice(0, 500) });
         }
         break;
@@ -306,6 +442,8 @@ wss.on('connection', (ws) => {
         }
         user.coins -= cost;
         partner.coins += cost; // receiver earns the coins, like a host on Chamet
+        stats.totalGifts++;
+        stats.giftCounts[msg.gift] = (stats.giftCounts[msg.gift] || 0) + 1;
         send(ws, { type: 'coins', coins: user.coins });
         send(partner.ws, { type: 'coins', coins: partner.coins });
         send(partner.ws, { type: 'gift', from: user.id, nickname: user.nickname, gift: msg.gift, emoji: gift.emoji, name: gift.name });
@@ -326,8 +464,10 @@ wss.on('connection', (ws) => {
           time: new Date().toISOString(),
           reporter: user.id,
           reporterName: user.nickname,
+          reporterEmail: user.verified ? user.verified.email : '',
           reported: partner ? partner.id : null,
           reportedName: partner ? partner.nickname : null,
+          reportedEmail: partner && partner.verified ? partner.verified.email : '',
           reason,
         };
         reports.push(entry);
