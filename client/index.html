@@ -1403,7 +1403,14 @@ function renderBuyList(buyingEnabled) {
     ? 'Secure payment by Stripe. Your diamonds are added automatically after payment.'
     : 'Real buying is not switched on yet.';
 }
-function toggleBuyPanel() { $('buyOverlay').classList.toggle('hidden'); }
+function toggleBuyPanel() {
+  const opening = $('buyOverlay').classList.contains('hidden');
+  $('buyOverlay').classList.toggle('hidden');
+  // Refresh the packs (and the enabled state) every time the panel opens,
+  // so a failed first load — e.g. the server was still waking up — can't
+  // leave the Buy buttons stuck disabled.
+  if (opening) loadDiamondPacks();
+}
 async function buyDiamonds(priceId) {
   if (!sessionToken) { toast('Sign in with Google first.'); return; }
   try {
