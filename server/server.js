@@ -69,7 +69,95 @@ const GIFTS = {
   rocket:  { name: 'Rocket',  emoji: '🚀', cost: 200 },
 };
 
+// ---- diamond buying (Stripe Checkout) ----
+// The diamond packages sold through Stripe. Price IDs are the test-mode
+// prices in the connected Stripe account; swap them for live-mode price IDs
+// when going live. Set STRIPE_SECRET_KEY on Render to turn buying on —
+// without it the buy buttons tell the user buying isn't set up yet.
+// (The webhook secret lets the server verify Stripe's payment notices.)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const stripe = STRIPE_SECRET_KEY ? require('stripe')(STRIPE_SECRET_KEY) : null;
+const DIAMOND_PACKS = [
+  { diamonds: 50,   price: 0.99,  priceId: 'price_1UaTRGRzfiKGDM2jo3v8Att7' },
+  { diamonds: 120,  price: 1.99,  priceId: 'price_1UaTXfRzfiKGDM2j6hHsYzec' },
+  { diamonds: 300,  price: 4.99,  priceId: 'price_1UaTXfRzfiKGDM2j1bDGvkA8' },
+  { diamonds: 1000, price: 14.99, priceId: 'price_1UaTXfRzfiKGDM2jX794TjFD' },
+];
+
+// Bought diamonds must survive reconnects and restarts, so balances live in
+// a file keyed by email (same ephemeral-disk caveat as the admin config).
+// Processed checkout IDs are stored too, so a retried payment notice can
+// never credit the same purchase twice.
+const DIAMOND_STORE_PATH = path.join(__dirname, 'diamond-balances.json');
+let diamondBalances = {};
+const processedCheckouts = new Set();
+try {
+  const saved = JSON.parse(fs.readFileSync(DIAMOND_STORE_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') {
+    if (saved.balances && typeof saved.balances === 'object') diamondBalances = saved.balances;
+    if (Array.isArray(saved.processedCheckouts)) saved.processedCheckouts.forEach(id => processedCheckouts.add(id));
+  }
+} catch {}
+function saveDiamondStore() {
+  try { fs.writeFileSync(DIAMOND_STORE_PATH, JSON.stringify({ balances: diamondBalances, processedCheckouts: [...processedCheckouts] })); } catch {}
+}
+function getDiamondBalance(email) {
+  const key = String(email || '').toLowerCase();
+  if (!key) return START_DIAMONDS;
+  if (diamondBalances[key] == null) diamondBalances[key] = START_DIAMONDS;
+  return diamondBalances[key];
+}
+function setDiamondBalance(email, n) {
+  const key = String(email || '').toLowerCase();
+  if (!key) return;
+  diamondBalances[key] = Math.max(0, Math.floor(n));
+  saveDiamondStore();
+}
+// Keep a connected user's stored balance in step with their live balance.
+function syncDiamonds(user) {
+  if (user.verified && user.verified.email) setDiamondBalance(user.verified.email, user.diamonds);
+}
+
 const app = express();
+// Stripe's payment webhook needs the raw body to verify its signature, so
+// it is registered before the JSON parser.
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  if (!stripe) return res.status(501).json({ error: 'Stripe is not configured.' });
+  let event;
+  try {
+    if (STRIPE_WEBHOOK_SECRET) {
+      event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+    } else {
+      event = JSON.parse(req.body.toString());
+    }
+  } catch (e) {
+    return res.status(400).send('Bad webhook.');
+  }
+  if (event.type === 'checkout.session.completed') {
+    const s = event.data.object;
+    // Never credit the same checkout twice (Stripe can retry deliveries).
+    if (s.id && processedCheckouts.has(s.id)) return res.json({ received: true, duplicate: true });
+    if (s.id) processedCheckouts.add(s.id);
+    const email = String(s.metadata?.email || s.customer_email || '').toLowerCase();
+    const diamonds = parseInt(s.metadata?.diamonds || '0', 10);
+    if (email && diamonds > 0) {
+      const bal = getDiamondBalance(email) + diamonds;
+      setDiamondBalance(email, bal);
+      saveDiamondStore();
+      // If the buyer is online right now, top up their live balance too.
+      for (const u of clients.values()) {
+        if (u.verified && String(u.verified.email || '').toLowerCase() === email) {
+          u.diamonds = bal;
+          send(u.ws, { type: 'diamonds', diamonds: u.diamonds });
+          send(u.ws, { type: 'purchase-complete', diamonds });
+        }
+      }
+      console.log('DIAMONDS SOLD:', email, '+', diamonds);
+    }
+  }
+  res.json({ received: true });
+});
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'client')));
 app.get('/health', (req, res) => res.json({ ok: true, online: clients.size }));
@@ -289,6 +377,36 @@ app.post('/admin/api/trial', requireAdmin, (req, res) => {
   res.json({ ok: true, trialActive: trialActive(), trialSetting: FREE_TRIAL, trialUntil: FREE_TRIAL_UNTIL.toISOString() });
 });
 
+// ---- Diamond buying API ----
+// The packages the app shows, and whether buying is switched on.
+app.get('/api/diamond-packs', (req, res) => {
+  res.json({ buyingEnabled: !!stripe, packs: DIAMOND_PACKS.map(p => ({ diamonds: p.diamonds, price: p.price, priceId: p.priceId })) });
+});
+// Start a Stripe Checkout for a diamond package. Returns the payment URL.
+app.post('/api/buy-diamonds', async (req, res) => {
+  if (!stripe) return res.status(501).json({ error: 'Diamond buying is not set up yet.' });
+  const profile = getSession(req.body?.session);
+  if (!profile || profile.provider !== 'google') return res.status(401).json({ error: 'Sign in first.' });
+  const priceId = String(req.body?.priceId || '');
+  const pack = DIAMOND_PACKS.find(p => p.priceId === priceId);
+  if (!pack) return res.status(400).json({ error: 'Unknown diamond package.' });
+  try {
+    const base = `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { email: profile.email, diamonds: String(pack.diamonds) },
+      customer_email: profile.email,
+      success_url: `${base}/?bought=1`,
+      cancel_url: `${base}/?cancelled=1`,
+    });
+    res.json({ ok: true, url: session.url });
+  } catch (e) {
+    console.error('Checkout failed:', e.message);
+    res.status(500).json({ error: 'Could not start checkout.' });
+  }
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
@@ -365,6 +483,7 @@ function billPair(user, partner) {
     if (u.diamonds >= owed) {
       u.diamonds -= owed;
       u.diamondsBilled = blocks;
+      syncDiamonds(u);
       send(u.ws, { type: 'diamonds', diamonds: u.diamonds });
     } else {
       // Out of diamonds — end the call for both.
@@ -429,6 +548,9 @@ wss.on('connection', (ws) => {
           setTimeout(() => { try { ws.close(); } catch {} }, 100);
           break;
         }
+        // Load their bought diamonds (new accounts start with the free 10).
+        user.diamonds = getDiamondBalance(profile.email);
+        send(ws, { type: 'diamonds', diamonds: user.diamonds });
         // Display name is editable after sign-in: use the typed name when
         // given, otherwise the Google name. The ✓ badge stays — the user
         // is still a verified Google account.
@@ -520,6 +642,7 @@ wss.on('connection', (ws) => {
       case 'free-diamonds':
         // Demo only: free diamonds so people can keep calling without paying.
         user.diamonds += 10;
+        syncDiamonds(user);
         send(ws, { type: 'diamonds', diamonds: user.diamonds });
         break;
 

@@ -163,6 +163,15 @@
   #toast.show { opacity: 1; }
   .fine { font-size: 12px; color: #8a8a9e; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
   .btn.apple-btn { background: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  /* Buy diamonds panel (Stripe Checkout). */
+  .buy-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .buy-card { background: #17172c; border: 1px solid rgba(255,255,255,.14); border-radius: 22px; padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .buy-card h2 { font-size: 19px; }
+  .buy-card .sub { color: #9a9ab0; font-size: 13px; margin: 4px 0 14px; }
+  .buy-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+  .buy-row .amt { font-size: 17px; font-weight: 800; }
+  .buy-row .mins { font-size: 12px; color: #9a9ab0; }
+  .buy-row .price { font-size: 16px; font-weight: 800; color: #ffd166; }
   .btn.apple-btn svg { width: 18px; height: 18px; fill: #fff; flex: 0 0 auto; }
   #googleBtn { display: flex; justify-content: center; }
   #googleBtn > div { width: 100% !important; }
@@ -282,7 +291,7 @@
   <div class="topbar">
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
     <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
-    <span class="pill" style="cursor:pointer" onclick="freeDiamonds()" title="Tap for 10 free diamonds">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="event.stopPropagation(); freeDiamonds()">+10 free</button></span>
+    <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button> <button class="btn small" style="margin-left:6px" onclick="freeDiamonds()">+10 free</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
@@ -329,7 +338,7 @@
     <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span> · <span id="callTimer">00:00</span></div>
     <div class="call-top">
       <span class="pill"><span class="coin-dot"></span><b id="coinCountCall">0</b></span>
-      <span class="pill" id="diamondPill" style="cursor:pointer" onclick="freeDiamonds()" title="Tap for 10 free diamonds">💎 <b id="diamondCountCall">0</b></span>
+      <span class="pill" id="diamondPill" style="cursor:pointer" onclick="toggleBuyPanel()" title="Buy diamonds">💎 <b id="diamondCountCall">0</b></span>
       <span class="pill" id="freeTimePill">🎉 Free: 55s</span>
       <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
       <span class="pill" id="netPill">📶 —</span>
@@ -389,6 +398,19 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- Buy diamonds (Stripe Checkout) -->
+<div class="buy-overlay hidden" id="buyOverlay" onclick="if(event.target===this)toggleBuyPanel()">
+  <div class="buy-card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2>💎 Buy diamonds</h2>
+      <button class="float-btn" onclick="toggleBuyPanel()">✕</button>
+    </div>
+    <div class="sub">Secure payment by Stripe. 1 diamond = 30 seconds of call time.</div>
+    <div id="buyList"></div>
+    <div class="fine" id="buyNote">Your diamonds are added automatically after payment.</div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -706,6 +728,7 @@ function handle(msg) {
     case 'online': $('onlineCount').textContent = msg.count; break;
     case 'coins': setCoins(msg.coins); break;
     case 'diamonds': setDiamonds(msg.diamonds); break;
+    case 'purchase-complete': toast('Payment received — you got +' + msg.diamonds + ' diamonds! 💎'); break;
     case 'time-up':
       toast(msg.message || 'Out of diamonds — the call has ended.');
       endCallUI();
@@ -1331,6 +1354,42 @@ function blockPeer() {
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
 function freeDiamonds() { send({ type: 'free-diamonds' }); toast('+10 free diamonds 💎'); }
 
+// ---------- buying diamonds (Stripe Checkout) ----------
+let diamondPacks = [];
+async function loadDiamondPacks() {
+  try {
+    const data = await (await fetch('/api/diamond-packs')).json();
+    diamondPacks = data.packs || [];
+    renderBuyList(!!data.buyingEnabled);
+  } catch { renderBuyList(false); }
+}
+function renderBuyList(buyingEnabled) {
+  const mins = d => {
+    const m = Math.round(d * 30 / 60);
+    return m >= 60 ? (Math.floor(m / 60) + 'h ' + (m % 60) + 'm') : m + ' min';
+  };
+  $('buyList').innerHTML = diamondPacks.map(p =>
+    '<div class="buy-row"><div><div class="amt">💎 ' + p.diamonds + '</div><div class="mins">≈ ' + mins(p.diamonds) + ' of calls</div></div>' +
+    '<div style="display:flex;align-items:center;gap:10px"><span class="price">$' + p.price.toFixed(2) + '</span>' +
+    '<button class="btn" ' + (buyingEnabled ? '' : 'disabled') + ' onclick="buyDiamonds(\'' + p.priceId + '\')">Buy</button></div></div>'
+  ).join('') +
+  '<div class="buy-row"><div><div class="amt">💎 10</div><div class="mins">Free demo diamonds</div></div>' +
+  '<button class="btn ghost" onclick="freeDiamonds(); toggleBuyPanel()">Get free</button></div>';
+  $('buyNote').textContent = buyingEnabled
+    ? 'Secure payment by Stripe. Your diamonds are added automatically after payment.'
+    : 'Real buying is not switched on yet — the free demo diamonds work for testing.';
+}
+function toggleBuyPanel() { $('buyOverlay').classList.toggle('hidden'); }
+async function buyDiamonds(priceId) {
+  if (!sessionToken) { toast('Sign in with Google first.'); return; }
+  try {
+    const r = await fetch('/api/buy-diamonds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, session: sessionToken }) });
+    const data = await r.json();
+    if (!r.ok) { toast(data.error || 'Buying is not available right now.'); return; }
+    location.href = data.url; // Stripe's secure payment page
+  } catch { toast('Could not start checkout.'); }
+}
+
 renderGifts();
 renderFilterPanel();
 loadMyPhoto();
@@ -1350,6 +1409,10 @@ $('videoWrap').addEventListener('pointerup', onVideoWrapPointerUp);
 $('videoWrap').addEventListener('pointercancel', () => { swipeTrack = null; });
 initAuth();
 setProfileFormEnabled(false);
+loadDiamondPacks();
+// Back from Stripe Checkout after a purchase (or a cancelled one).
+if (params.get('bought')) toast('Payment successful! Your diamonds are being added. 💎');
+if (params.get('cancelled')) toast('Payment cancelled — no charge.');
 show('screen-age');
 </script>
 </body>
