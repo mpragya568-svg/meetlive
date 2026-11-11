@@ -425,6 +425,10 @@ app.post('/api/buy-diamonds', async (req, res) => {
       customer_email: profile.email,
       success_url: `${base}/?bought=1`,
       cancel_url: `${base}/?cancelled=1`,
+      // Managed Payments is on by default and demands a product tax code
+      // on every product; these are simple virtual diamonds with no tax
+      // set up yet, so turn it off for these sessions.
+      managed_payments: { enabled: false },
     });
     res.json({ ok: true, url: session.url });
   } catch (e) {
