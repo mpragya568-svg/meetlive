@@ -170,7 +170,7 @@
   .gift-pop { font-size: 110px; animation: pop 2s ease forwards; text-align: center; }
   .gift-pop small { display: block; font-size: 18px; font-weight: 700; margin-top: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
   @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 20% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1) translateY(-70px); opacity: 0; } }
-  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: rgba(20,20,35,.92); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 12px 32px rgba(0,0,0,.5); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 99; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: rgba(20,20,35,.92); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 12px 32px rgba(0,0,0,.5); color: #fff; padding: 12px 20px; border-radius: 999px; font-size: 15px; z-index: 200; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 92vw; text-align: center; }
   #toast.show { opacity: 1; }
   .fine { font-size: 12px; color: #8a8a9e; text-align: center; margin-top: 16px; line-height: 1.5; max-width: 380px; }
   .btn.apple-btn { background: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -1409,7 +1409,19 @@ async function buyDiamonds(priceId) {
   try {
     const r = await fetch('/api/buy-diamonds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, session: sessionToken }) });
     const data = await r.json();
-    if (!r.ok) { toast(data.error || 'Buying is not available right now.'); return; }
+    if (!r.ok) {
+      // A 401 means the saved sign-in went stale (e.g. the server restarted
+      // and sessions were in-memory). Clear it so the next sign-in is fresh,
+      // close the panel so the message is visible, and say so plainly.
+      if (r.status === 401) {
+        sessionToken = ''; myProfile = null;
+        localStorage.removeItem('meetlive_session'); localStorage.removeItem('meetlive_profile');
+        $('buyOverlay').classList.add('hidden');
+        toast('Your sign-in expired — please sign in with Google again, then buy.');
+        return;
+      }
+      toast(data.error || 'Buying is not available right now.'); return;
+    }
     location.href = data.url; // Stripe's secure payment page
   } catch { toast('Could not start checkout.'); }
 }
