@@ -88,34 +88,56 @@
   .gift-panel-head b { font-size: 15px; }
   .gift-panel-head button { background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer; padding: 4px 8px; }
   .match-btn:active { transform: scale(0.96); }
-  /* Single compact top bar: participant profile + follow + status pills.
-     It stops short of the PiP (right: 132px) so it never runs underneath it. */
-  .call-topbar { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 132px; z-index: 3; display: flex; align-items: center; gap: 8px; background: rgba(10,10,20,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.14); padding: 6px 10px; border-radius: 999px; max-width: calc(100% - 144px); box-sizing: border-box; flex-wrap: nowrap; overflow: hidden; }
-  .topbar-profile { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; cursor: pointer; }
-  .topbar-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; overflow: hidden; }
-  .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .topbar-name { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-  .topbar-name b { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .topbar-name span { font-size: 11px; color: #a5a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .follow-circle { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: linear-gradient(155deg, rgba(255,255,255,.3), rgba(255,255,255,.1) 55%, rgba(255,255,255,.06)); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 1px rgba(255,255,255,.45), 0 4px 12px rgba(0,0,0,.35); transition: transform .15s, background .15s; }
+  /* Chamet-style top area: a profile card (photo, name, follow, rate),
+     a big call timer with the free countdown, and compact status pills.
+     The whole stack stops short of the PiP (right: 132px) so it never
+     runs underneath it. The container lets taps pass through to the
+     video except on the card and pills themselves. */
+  .call-top-info { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 132px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; max-width: calc(100% - 144px); box-sizing: border-box; pointer-events: none; }
+  .peer-card { pointer-events: auto; display: flex; align-items: center; gap: 10px; background: rgba(10,10,20,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.14); padding: 8px 12px 8px 8px; border-radius: 20px; max-width: 100%; box-sizing: border-box; }
+  .peer-card-photo { width: 48px; height: 48px; border-radius: 50%; flex: 0 0 auto; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; overflow: hidden; cursor: pointer; border: 2px solid rgba(255,77,141,.7); box-sizing: border-box; }
+  .peer-card-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .peer-card-info { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; cursor: pointer; }
+  .peer-card-info b { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .peer-card-info span { font-size: 11px; color: #a5a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .peer-card-rate { display: flex; gap: 6px; margin-top: 3px; }
+  .peer-card-rate .pill { padding: 3px 8px; font-size: 11px; }
+  .follow-circle { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; border: none; background: linear-gradient(135deg, #a855f7, #8b5cf6); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(139,92,246,.55); transition: transform .15s; }
   .follow-circle:active { transform: scale(.88); }
-  .follow-circle.following { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 45%, #8b5cf6); border-color: rgba(255,255,255,.4); }
-  .follow-circle svg { width: 16px; height: 16px; }
-  .topbar-divider { width: 1px; height: 22px; background: rgba(255,255,255,.2); flex: 0 0 auto; }
-  .topbar-pills { display: flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
-  .topbar-pills .pill { padding: 5px 9px; font-size: 12px; gap: 4px; white-space: nowrap; flex: 0 0 auto; }
-  .call-topbar .pill.gold { border-color: rgba(255,209,102,.45); color: #ffd166; }
+  .follow-circle.following { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 45%, #8b5cf6); }
+  .follow-circle svg { width: 20px; height: 20px; }
+  .call-timer-block { display: flex; align-items: baseline; gap: 8px; padding-left: 4px; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+  .call-timer { font-size: 30px; font-weight: 800; letter-spacing: .5px; }
+  .call-free { font-size: 15px; font-weight: 600; color: rgba(255,255,255,.85); }
+  .call-free.gold { color: #ffd166; }
+  .call-status-pills { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; padding-left: 4px; pointer-events: auto; }
+  .call-status-pills .pill { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+  .call-status-pills .pill.gold { border-color: rgba(255,209,102,.45); color: #ffd166; }
   .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); box-sizing: border-box; max-width: 100%; }
   /* Swipe-left "clean video": every overlay fades out so only the video
      shows. Swipe right (or tap the video) brings it all back. */
-  #screen-call .call-topbar, #screen-call .controls, #screen-call .connecting-overlay { transition: opacity .25s ease, visibility .25s ease; }
-  #screen-call.ui-hidden .call-topbar, #screen-call.ui-hidden .controls, #screen-call.ui-hidden .connecting-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
-  /* One row of five controls: never wraps — buttons shrink proportionally
-     on narrow phones instead (clamp on size + gap). */
-  .ctrl-row { display: flex; justify-content: space-evenly; flex-wrap: nowrap; gap: clamp(6px, 2.5vw, 14px); margin-bottom: 12px; max-width: 100%; box-sizing: border-box; }
-  .ctrl-row:last-child { margin-bottom: 0; }
+  #screen-call .call-top-info, #screen-call .controls, #screen-call .connecting-overlay { transition: opacity .25s ease, visibility .25s ease; }
+  #screen-call.ui-hidden .call-top-info, #screen-call.ui-hidden .controls, #screen-call.ui-hidden .connecting-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
+  /* Bottom row of five circular controls, no labels — buttons shrink
+     proportionally on narrow phones instead of wrapping. */
+  .ctrl-row { display: flex; justify-content: space-evenly; flex-wrap: nowrap; gap: clamp(6px, 2.5vw, 14px); max-width: 100%; box-sizing: border-box; }
   .ctrl-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 0 auto; position: relative; }
   .ctrl-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,0,0,.6); white-space: nowrap; }
+  /* Diamond / gift / end control variants (Chamet-style bottom row). */
+  .ctrl.diamond { background: linear-gradient(155deg, #c084fc, #8b5cf6 55%, #6d28d9); border-color: rgba(255,255,255,.4); box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -2px 4px rgba(0,0,0,.18), 0 10px 26px rgba(139,92,246,.55); }
+  .ctrl.gift-btn { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 55%, #db2777); border-color: rgba(255,255,255,.4); box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -2px 4px rgba(0,0,0,.18), 0 10px 26px rgba(255,77,141,.55); }
+  .ctrl.end-btn { background: linear-gradient(155deg, rgba(255,255,255,.28), rgba(255,255,255,.1) 55%, rgba(255,255,255,.06)); }
+  /* Rules banner + Match Next pill, sitting above the control row. */
+  .call-bottom-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; max-width: 100%; box-sizing: border-box; }
+  .rules-banner { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: rgba(202, 138, 4, .55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 209, 102, .35); border-radius: 16px; padding: 10px 12px; font-size: 13px; font-weight: 600; line-height: 1.3; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .rules-banner svg { width: 18px; height: 18px; flex: 0 0 auto; }
+  .rules-banner span { flex: 1; min-width: 0; }
+  .rules-banner button { background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; padding: 2px; display: flex; flex: 0 0 auto; }
+  .rules-banner button svg { width: 14px; height: 14px; }
+  .match-next { flex: 0 0 auto; background: rgba(10,10,20,.6); border: 2px solid #ff4d8d; color: #fff; font-family: inherit; font-size: 16px; font-weight: 800; padding: 12px 20px; border-radius: 999px; cursor: pointer; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 22px rgba(0,0,0,.45), 0 0 0 1px rgba(255,77,141,.25); transition: transform .15s; }
+  .match-next:active { transform: scale(.95); }
+  /* Menu popover (Mic / Camera / Switch live here, above the Menu button). */
+  .menu-popover { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); z-index: 5; display: flex; gap: 10px; background: rgba(20,20,40,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.14); border-radius: 20px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.55); }
   /* Unread chat badge — a small pink counter on the Chat button. */
   .chat-badge { position: absolute; top: -4px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(0,0,0,.5); box-sizing: border-box; z-index: 1; }
   /* Premium soft-touch glass buttons: a soft light-catching gradient, a
@@ -131,10 +153,6 @@
   .ctrl.off { background: linear-gradient(155deg, #ff7a7a, #e03131 60%, #c92a2a); border-color: rgba(255,255,255,.35); box-shadow: inset 0 1px 1px rgba(255,255,255,.5), inset 0 -2px 4px rgba(0,0,0,.2), 0 10px 26px rgba(224,49,49,.55); }
   .ctrl.active { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 45%, #8b5cf6); border-color: rgba(255,255,255,.4); box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -2px 4px rgba(0,0,0,.15), 0 10px 28px rgba(255,77,141,.55); }
   .ctrl svg { width: 24px; height: 24px; flex: 0 0 auto; }
-  .ctrl.wide { width: auto; flex: 1; max-width: 180px; min-width: 0; height: 54px; padding: 0 16px; border-radius: 999px; font-size: 16px; font-weight: 800; letter-spacing: .3px; gap: 8px; }
-  .ctrl.wide svg { width: 20px; height: 20px; }
-  .ctrl.next { background: linear-gradient(135deg, #ff6aa9, #ff4d8d 45%, #a855f7); box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -2px 5px rgba(0,0,0,.18), 0 12px 30px rgba(255,77,141,.55); }
-  .ctrl.end { background: linear-gradient(155deg, #ff7a7a, #e03131 60%, #c92a2a); box-shadow: inset 0 1px 1px rgba(255,255,255,.5), inset 0 -2px 5px rgba(0,0,0,.2), 0 12px 30px rgba(224,49,49,.5); }
   .gift-tray { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; }
   .gift-tray::-webkit-scrollbar { display: none; }
   .gift { flex: 0 0 auto; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 10px 12px; text-align: center; cursor: pointer; color: #fff; transition: transform .15s; }
@@ -257,19 +275,21 @@
   .profile-popup-card h2 { font-size: 19px; margin-bottom: 4px; }
   .profile-popup-card .meta { color: #a5a5b8; font-size: 14px; }
   .profile-popup-card .rate { color: #ffd166; font-size: 16px; font-weight: 800; margin-top: 10px; }
-  /* Narrow phones: shrink the top bar, controls and Next/End so nothing
-     wraps or overflows — everything scales down instead. */
+  /* Narrow phones: shrink the profile card, timer and controls so
+     nothing wraps or overflows — everything scales down instead. */
   @media (max-width: 380px) {
-    .call-topbar { padding: 5px 8px; gap: 6px; right: 126px; max-width: calc(100% - 138px); }
-    .topbar-avatar { width: 26px; height: 26px; font-size: 12px; }
-    .follow-circle { width: 26px; height: 26px; }
-    .follow-circle svg { width: 14px; height: 14px; }
-    .topbar-name b { font-size: 12px; }
-    .topbar-name span { font-size: 10px; }
-    .topbar-pills .pill { padding: 4px 7px; font-size: 11px; }
+    .call-top-info { right: 126px; max-width: calc(100% - 138px); gap: 8px; }
+    .peer-card { padding: 6px 10px 6px 6px; gap: 8px; border-radius: 16px; }
+    .peer-card-photo { width: 40px; height: 40px; font-size: 17px; }
+    .peer-card-info b { font-size: 15px; }
+    .follow-circle { width: 34px; height: 34px; }
+    .follow-circle svg { width: 17px; height: 17px; }
+    .call-timer { font-size: 26px; }
+    .call-free { font-size: 13px; }
+    .call-status-pills .pill { padding: 4px 8px; font-size: 11px; }
     .ctrl-row { gap: 6px; }
-    .ctrl-label { font-size: 10px; }
-    .ctrl.wide { height: 50px; font-size: 15px; padding: 0 12px; }
+    .match-next { font-size: 14px; padding: 10px 16px; }
+    .rules-banner { font-size: 12px; padding: 8px 10px; }
     .controls { padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
   }
   .dm-header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
@@ -487,19 +507,25 @@
       <div class="spinner"></div>
       <div id="connectingText">Connecting…</div>
     </div>
-    <div class="call-topbar">
-      <div class="topbar-profile" onclick="openPeerProfile()" title="View profile">
-        <span class="topbar-avatar" id="topbarAvatar">?</span>
-        <span class="topbar-name"><b id="peerName">Stranger</b><span><span id="connState">connecting…</span> · <span id="callTimer">00:00</span></span></span>
+    <div class="call-top-info">
+      <div class="peer-card">
+        <span class="peer-card-photo" id="peerCardPhoto" onclick="openPeerProfile()" title="View profile">?</span>
+        <div class="peer-card-info" onclick="openPeerProfile()" title="View profile">
+          <b id="peerName">Stranger</b>
+          <span id="connState">connecting…</span>
+        </div>
+        <button class="follow-circle hidden" id="followPeerBtn" onclick="followPeerFromCall()" title="Follow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></button>
       </div>
-      <button class="follow-circle hidden" id="followPeerBtn" onclick="followPeerFromCall()" title="Follow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></button>
-      <div class="topbar-divider"></div>
-      <div class="topbar-pills">
+      <div class="call-timer-block">
+        <span class="call-timer" id="callTimer">00:00:00</span>
+        <span class="call-free" id="freeTimePill">Free: 55s</span>
+      </div>
+      <div class="call-status-pills">
         <span class="pill" id="diamondPill" style="cursor:pointer" onclick="toggleBuyPanel()" title="Buy diamonds">💎 <b id="diamondCountCall">0</b></span>
-        <span class="pill" id="freeTimePill">Free: 55s</span>
+        <span class="pill hidden" id="peerRatePill"></span>
+        <span class="pill" id="netPill">—</span>
         <span class="pill gold hidden" id="trialPillCall">Gifts free</span>
         <span class="pill gold hidden" id="directRatePill"></span>
-        <span class="pill" id="netPill">—</span>
       </div>
     </div>
     <div id="giftFx"></div>
@@ -526,16 +552,28 @@
           <button class="float-send" onclick="sendChat()" title="Send"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button>
         </div>
       </div>
-      <div class="ctrl-row">
-        <div class="ctrl-wrap"><button class="ctrl" id="micBtn" onclick="toggleMic()" title="Mute / unmute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button><span class="ctrl-label">Mic</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" id="camBtn" onclick="toggleCam()" title="Camera on / off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></button><span class="ctrl-label">Camera</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" id="switchBtn" onclick="switchCamera()" title="Switch camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg></button><span class="ctrl-label">Switch</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></svg></button><span class="chat-badge hidden" id="chatBadge">0</span><span class="ctrl-label">Chat</span></div>
-        <div class="ctrl-wrap"><button class="ctrl" onclick="toggleGiftPanel()" title="Send a gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/></svg></button><span class="ctrl-label">Gift</span></div>
+      <div class="call-bottom-bar">
+        <div class="rules-banner" id="rulesBanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>No nudity or under-18s — violators are reported and blocked.</span>
+          <button onclick="dismissRulesBanner()" title="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        </div>
+        <button class="match-next" onclick="nextStranger()">Match Next</button>
       </div>
       <div class="ctrl-row">
-        <button class="ctrl wide next" onclick="nextStranger()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4v16"/><path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/></svg>Next</button>
-        <button class="ctrl wide end" onclick="endCall()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272"/><path d="M22 2 2 22"/><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"/></svg>End</button>
+        <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></button><span class="chat-badge hidden" id="chatBadge">0</span></div>
+        <div class="ctrl-wrap"><button class="ctrl diamond" onclick="toggleBuyPanel()" title="Buy diamonds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg></button></div>
+        <div class="ctrl-wrap"><button class="ctrl gift-btn" onclick="toggleGiftPanel()" title="Send a gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/></svg></button></div>
+        <div class="ctrl-wrap">
+          <button class="ctrl" id="menuBtn" onclick="toggleMenuPopover()" title="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
+          <div class="menu-popover hidden" id="menuPopover">
+            <div class="ctrl-wrap"><button class="ctrl" id="micBtn" onclick="toggleMic()" title="Mute / unmute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button><span class="ctrl-label">Mic</span></div>
+            <div class="ctrl-wrap"><button class="ctrl" id="camBtn" onclick="toggleCam()" title="Camera on / off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></button><span class="ctrl-label">Camera</span></div>
+            <div class="ctrl-wrap"><button class="ctrl" id="switchBtn" onclick="switchCamera()" title="Switch camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg></button><span class="ctrl-label">Switch</span></div>
+          </div>
+        </div>
+        <div class="ctrl-wrap"><button class="ctrl end-btn" onclick="endCall()" title="End call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      </div>
       </div>
     </div>
   </div>
@@ -952,16 +990,21 @@ function handle(msg) {
       peerGender = msg.peer.gender || '';
       updatePeerLabel();
       // Direct call (Chamet-style): show what the call costs / earns, and
-      // offer Follow on the stranger. Random matches show neither.
+      // offer Follow on the stranger. Random matches show the peer's rate
+      // pill instead, and the rules banner comes back for every new match.
       const ratePill = $('directRatePill');
       if (msg.direct) {
         ratePill.classList.remove('hidden');
         ratePill.textContent = '💎 ' + (msg.rate != null ? msg.rate : 0) + '/min — ' + (msg.role === 'callee' ? "you're earning" : "you're paying");
         $('freeTimePill').classList.add('hidden');
+        $('peerRatePill').classList.add('hidden');
       } else {
         ratePill.classList.add('hidden');
         $('freeTimePill').classList.remove('hidden');
+        if (peerCallPrice != null) $('peerRatePill').classList.remove('hidden');
       }
+      const rb = $('rulesBanner');
+      if (rb) rb.classList.remove('hidden');
       // Small circular Follow button next to the profile in the top bar.
       updateFollowPeerBtn();
       $('chatLog').innerHTML = '';
@@ -1220,6 +1263,7 @@ function endCallUI() {
   stopCallTimer();
   stopNetMonitor();
   $('giftPanel').classList.add('hidden');
+  closeMenuPopover();
   $('reactionBar').classList.add('hidden');
   $('peerProfilePopup').classList.add('hidden');
   closeChat();
@@ -1228,6 +1272,7 @@ function endCallUI() {
   $('remoteCamOff').classList.add('hidden');
   $('connectingOverlay').classList.add('hidden');
   $('directRatePill').classList.add('hidden');
+  $('peerRatePill').classList.add('hidden');
   $('followPeerBtn').classList.add('hidden');
   $('freeTimePill').classList.remove('hidden');
   resetSwap();
@@ -1245,7 +1290,7 @@ function updateFreeTimePill() {
   const s = Math.floor((Date.now() - callStartTime) / 1000);
   const left = Math.max(0, callFreeSeconds - s);
   if (left > 0) {
-    pill.textContent = 'Free: ' + left + 's';
+    pill.textContent = '(Free: ' + left + 's)';
     pill.classList.remove('gold');
   } else {
     pill.textContent = myDiamonds <= 2 ? '💎 1 per 30s · ' + myDiamonds + ' left' : '💎 1 per 30s';
@@ -1255,21 +1300,22 @@ function updateFreeTimePill() {
 function startCallTimer() {
   stopCallTimer();
   callStartTime = Date.now();
-  $('callTimer').textContent = '00:00';
+  $('callTimer').textContent = '00:00:00';
   updateFreeTimePill();
   callTimerId = setInterval(() => {
     const s = Math.floor((Date.now() - callStartTime) / 1000);
-    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const hh = String(Math.floor(s / 3600)).padStart(2, '0');
+    const mm = String(Math.floor(s / 60) % 60).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');
-    $('callTimer').textContent = mm + ':' + ss;
+    $('callTimer').textContent = hh + ':' + mm + ':' + ss;
     updateFreeTimePill();
   }, 1000);
 }
 function stopCallTimer() {
   if (callTimerId) { clearInterval(callTimerId); callTimerId = 0; }
-  $('callTimer').textContent = '00:00';
+  $('callTimer').textContent = '00:00:00';
   const pill = $('freeTimePill');
-  if (pill) { pill.textContent = 'Free: ' + callFreeSeconds + 's'; pill.classList.remove('gold'); }
+  if (pill) { pill.textContent = '(Free: ' + callFreeSeconds + 's)'; pill.classList.remove('gold'); }
 }
 function startNetMonitor() {
   stopNetMonitor();
@@ -1319,13 +1365,24 @@ function resetSwap() {
 }
 function updatePeerLabel() {
   $('peerName').textContent = swapped ? 'You' : (peerName + (peerVerified ? ' ✓' : ''));
-  // Top-bar avatar: the peer's photo, or their initial.
-  const av = $('topbarAvatar');
+  // Profile-card photo: the peer's photo, or their initial.
+  const av = $('peerCardPhoto');
   if (av) {
     if (!swapped && peerPhoto) {
       av.innerHTML = '<img src="' + escAttr(peerPhoto) + '" alt="">';
     } else {
       av.textContent = (swapped ? 'Y' : (peerName || '?')).charAt(0).toUpperCase();
+    }
+  }
+  // The peer's per-minute price, shown under the timer (hidden for direct
+  // calls, where the direct-rate pill explains the billing instead).
+  const rp = $('peerRatePill');
+  if (rp) {
+    if (!swapped && peerCallPrice != null) {
+      rp.textContent = '💎 ' + peerCallPrice + '/min';
+      rp.classList.remove('hidden');
+    } else {
+      rp.classList.add('hidden');
     }
   }
 }
@@ -1443,6 +1500,20 @@ function toggleGiftPanel() {
   // Refresh prices every time the tray opens, so an admin price change
   // shows up without a reload.
   if (opening) loadGiftCatalog();
+}
+// ---------- Menu popover (Mic / Camera / Switch live here) ----------
+function toggleMenuPopover() {
+  $('menuPopover').classList.toggle('hidden');
+}
+function closeMenuPopover() {
+  const m = $('menuPopover');
+  if (m) m.classList.add('hidden');
+}
+// Rules banner (bottom-left): dismiss it for this call; it comes back on
+// the next match so every stranger sees the rules.
+function dismissRulesBanner() {
+  const b = $('rulesBanner');
+  if (b) b.classList.add('hidden');
 }
 // ---------- TikTok-style floating chat ----------
 // The panel is HIDDEN by default — it only opens when the user taps Chat.
