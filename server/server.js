@@ -79,10 +79,10 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const stripe = STRIPE_SECRET_KEY ? require('stripe')(STRIPE_SECRET_KEY) : null;
 const DIAMOND_PACKS = [
-  { diamonds: 50,   price: 0.99,  priceId: 'price_1UaTRGRzfiKGDM2jo3v8Att7' },
-  { diamonds: 120,  price: 1.99,  priceId: 'price_1UaTXfRzfiKGDM2j6hHsYzec' },
-  { diamonds: 300,  price: 4.99,  priceId: 'price_1UaTXfRzfiKGDM2j1bDGvkA8' },
-  { diamonds: 1000, price: 14.99, priceId: 'price_1UaTXfRzfiKGDM2jX794TjFD' },
+  { diamonds: 50,   price: 0.99,  priceId: 'price_1UadwJ2LyeHfZCaiPS9fVJI3' },
+  { diamonds: 120,  price: 1.99,  priceId: 'price_1UadxM2LyeHfZCaiEjy7UJHr' },
+  { diamonds: 300,  price: 4.99,  priceId: 'price_1UadyF2LyeHfZCaiXp7cZ2tn' },
+  { diamonds: 1000, price: 14.99, priceId: 'price_1Uadz22LyeHfZCaiO4l98jH1' },
 ];
 
 // Bought diamonds must survive reconnects and restarts, so balances live in
