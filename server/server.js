@@ -3,7 +3,7 @@
 // - Serves the web client (client/ folder)
 // - Matchmaking: keeps a queue of waiting users and pairs two at random
 // - Signaling: relays WebRTC offers/answers/ICE candidates between a pair
-// - Coins & gifts: validates gift costs, deducts from sender, credits receiver
+// - Diamonds & gifts: validates gift costs, deducts from sender, credits receiver
 // - Safety: report/block — reported users are logged and can never rematch
 //   with the person who reported them.
 //
@@ -19,7 +19,6 @@ const crypto = require('crypto');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const START_COINS = 100; // coins every new visitor starts with (demo coins)
 
 // ---- admin portal ----
 // The admin portal (/admin) is only for the Google account below.
@@ -44,7 +43,7 @@ const bannedEmails = new Set(adminConfig.bans.map(b => String(b.email || '').toL
 function isBannedEmail(email) { return !!email && bannedEmails.has(String(email).toLowerCase()); }
 
 // ---- free trial ----
-// While the trial is active, all gifts are FREE (cost 0 coins) so people can
+// While the trial is active, all gifts are FREE (cost 0 diamonds) so people can
 // gift as much as they like. The admin portal can turn it off or extend it;
 // the setting is stored in admin-config.json.
 let FREE_TRIAL = adminConfig.trialActive !== false;
@@ -423,7 +422,6 @@ app.get('/admin/api/users', requireAdmin, (req, res) => {
     googlePhoto: u.verified ? u.verified.picture : '', // Google profile photo
     photo: u.photo || null, // profile photo they picked in the app
     gender: u.gender,
-    coins: u.coins,
     diamonds: u.diamonds,
     status: pairs.has(u.id) ? 'in-call' : (waiting.includes(u) ? 'waiting' : 'idle'),
     partnerId: pairs.get(u.id) ? pairs.get(u.id).id : null,
@@ -695,7 +693,6 @@ wss.on('connection', (ws) => {
     ws,
     nickname: 'Guest',
     gender: 'other',
-    coins: START_COINS,
     diamonds: START_DIAMONDS, // pays for call time after the free 55s
     callPrice: DEFAULT_CALL_PRICE, // diamonds per minute others pay to call this user
     direct: null, // direct-call billing { role, ratePerMin, partnerId } while in one
@@ -705,7 +702,7 @@ wss.on('connection', (ws) => {
     joinedAt: Date.now(),
   };
   clients.set(ws, user);
-  send(ws, { type: 'welcome', id: user.id, coins: user.coins, diamonds: user.diamonds, freeTrial: trialActive(), callPrice: DEFAULT_CALL_PRICE, gifts: giftCatalog() });
+  send(ws, { type: 'welcome', id: user.id, diamonds: user.diamonds, freeTrial: trialActive(), callPrice: DEFAULT_CALL_PRICE, gifts: giftCatalog() });
   broadcastOnline();
 
   ws.on('message', (raw) => {
@@ -810,13 +807,6 @@ wss.on('connection', (ws) => {
         break;
       }
 
-      // Beauty filter — relayed so the partner renders YOUR filter on
-      // their screen (works on every phone, unlike baking it into the
-      // sent video, which older browsers can't do).
-      case 'filter':
-        if (partner) send(partner.ws, { type: 'filter', from: user.id, filter: String(msg.filter || '').slice(0, 200) });
-        break;
-
       case 'gift': {
         const gift = GIFTS[msg.gift];
         if (!gift || !partner) break;
@@ -839,13 +829,6 @@ wss.on('connection', (ws) => {
         send(ws, { type: 'gift-sent', gift: msg.gift, emoji: gift.emoji, name: gift.name });
         break;
       }
-
-      case 'free-coins':
-        // Demo only: free coins so people can try gifts without paying.
-        // Replace with a real payment flow before launching publicly.
-        user.coins += 100;
-        send(ws, { type: 'coins', coins: user.coins });
-        break;
 
       case 'report': {
         const reason = String(msg.reason || 'other').slice(0, 100);
