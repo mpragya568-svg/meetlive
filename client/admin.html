@@ -44,6 +44,16 @@
   .status.in-call { color: #4ade80; }
   .status.waiting { color: #ffd166; }
   .status.idle { color: #9a9ab0; }
+  /* Google photos: avatar box shows the initial, the photo covers it when it loads. */
+  .avatar-box { position: relative; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; flex: 0 0 auto; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); color: #fff; font-weight: 800; vertical-align: middle; }
+  .avatar-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .avatar-box.sm { width: 36px; height: 36px; font-size: 15px; }
+  .avatar-box.lg { width: 84px; height: 84px; font-size: 34px; }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .photo-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 16px 12px; text-align: center; }
+  .photo-card b { display: block; font-size: 14px; margin-top: 10px; }
+  .photo-card .email { font-size: 12px; color: #9a9ab0; word-break: break-all; margin-top: 2px; }
+  .photo-card .meta { font-size: 12px; margin-top: 6px; }
   .empty { color: #9a9ab0; font-size: 14px; padding: 8px 0; }
   .report { border-bottom: 1px solid rgba(255,255,255,.07); padding: 10px 0; font-size: 14px; line-height: 1.5; }
   .report:last-child { border-bottom: none; }
@@ -121,11 +131,18 @@
       <h2>👥 People online <span id="userCount"></span></h2>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Gender</th><th>Coins</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+          <thead><tr><th>Photo</th><th>Name</th><th>Email</th><th>Gender</th><th>Coins</th><th>Status</th><th>Joined</th><th></th></tr></thead>
           <tbody id="userRows"></tbody>
         </table>
       </div>
       <div class="empty hidden" id="noUsers">Nobody is online right now.</div>
+    </div>
+
+    <div class="card">
+      <h2>📷 Google photos <span id="photoCount"></span></h2>
+      <div class="photo-grid" id="photoGrid"></div>
+      <div class="empty hidden" id="noPhotos">No users online — their Google photos show up here when they sign in.</div>
+      <div class="fine">The photo is the one from their Google account (the one they signed in with). If someone has no Google photo, you see their initial instead.</div>
     </div>
 
     <div class="card">
@@ -183,6 +200,13 @@ async function api(path, opts) {
 }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// Google photo first, then the photo they picked in the app, else their initial.
+function avatarHTML(u, size) {
+  const photo = u.googlePhoto || u.photo;
+  const initial = esc((u.nickname || '?').charAt(0).toUpperCase());
+  const img = photo ? '<img src="' + esc(photo) + '" alt="" onerror="this.remove()">' : '';
+  return '<span class="avatar-box ' + size + '">' + initial + img + '</span>';
 }
 function timeAgo(ts) {
   const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -274,6 +298,7 @@ async function loadAll() {
     ]);
     renderStats(st);
     renderUsers(users.users || []);
+    renderPhotos(users.users || []);
     renderReports(reports.reports || []);
     renderBans(bans.bans || []);
   } catch (e) {
@@ -309,6 +334,7 @@ function renderUsers(users) {
   $('userCount').textContent = '(' + users.length + ')';
   $('noUsers').classList.toggle('hidden', users.length > 0);
   $('userRows').innerHTML = users.map(u => '<tr>' +
+    '<td>' + avatarHTML(u, 'sm') + '</td>' +
     '<td><b>' + esc(u.nickname) + '</b><br><span class="email">#' + u.id + (u.partnerId ? ' ↔ #' + u.partnerId : '') + '</span></td>' +
     '<td><span class="email">' + esc(u.email) + '</span></td>' +
     '<td>' + esc(u.gender) + '</td>' +
@@ -318,6 +344,16 @@ function renderUsers(users) {
     '<td style="white-space:nowrap"><button class="btn ghost small" onclick="kickUser(' + u.id + ')">Kick</button> ' +
     '<button class="btn danger small" onclick="banUser(' + u.id + ', \'' + esc(u.email).replace(/'/g, '') + '\')">Ban</button></td>' +
     '</tr>').join('');
+}
+function renderPhotos(users) {
+  $('photoCount').textContent = '(' + users.length + ')';
+  $('noPhotos').classList.toggle('hidden', users.length > 0);
+  $('photoGrid').innerHTML = users.map(u => '<div class="photo-card">' +
+    avatarHTML(u, 'lg') +
+    '<b>' + esc(u.nickname) + '</b>' +
+    '<div class="email">' + esc(u.email) + '</div>' +
+    '<div class="meta"><span class="status ' + u.status + '">' + u.status + '</span></div>' +
+    '</div>').join('');
 }
 function renderReports(reports) {
   $('reportCount').textContent = '(' + reports.length + ')';

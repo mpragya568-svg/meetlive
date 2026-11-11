@@ -223,6 +223,8 @@ app.get('/admin/api/users', requireAdmin, (req, res) => {
     id: u.id,
     nickname: u.nickname,
     email: u.verified ? u.verified.email : '',
+    googlePhoto: u.verified ? u.verified.picture : '', // Google profile photo
+    photo: u.photo || null, // profile photo they picked in the app
     gender: u.gender,
     coins: u.coins,
     status: pairs.has(u.id) ? 'in-call' : (waiting.includes(u) ? 'waiting' : 'idle'),
