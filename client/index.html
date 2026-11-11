@@ -201,6 +201,46 @@
   .signedin .who b { display: block; font-size: 15px; }
   .signedin .who span { font-size: 12px; color: #aaa; word-break: break-all; }
   .signedin button { background: none; border: none; color: #ff4d8d; font-size: 13px; cursor: pointer; flex: 0 0 auto; }
+  input[type=number] { width: 100%; padding: 13px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); color: #fff; font-size: 16px; outline: none; }
+  input[type=number]:focus { border-color: #ff4d8d; box-shadow: 0 0 0 3px rgba(255,77,141,.18); }
+  input[type=number]:disabled { opacity: .55; cursor: not-allowed; }
+  /* Lobby tabs (Discover / Following / Messages) — premium soft-touch pills. */
+  .tab-row { display: flex; gap: 8px; width: 100%; max-width: 480px; margin-bottom: 16px; }
+  .tab-btn { flex: 1; padding: 12px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.28); font-size: 14px; font-weight: 800; cursor: pointer; color: #ddd; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(155deg, rgba(255,255,255,.22), rgba(255,255,255,.08) 55%, rgba(255,255,255,.05)); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); box-shadow: inset 0 1px 1px rgba(255,255,255,.4), inset 0 -2px 4px rgba(0,0,0,.15), 0 8px 20px rgba(0,0,0,.35); transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease; }
+  .tab-btn:active { transform: scale(.95); }
+  .tab-btn.active { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 45%, #8b5cf6); border-color: rgba(255,255,255,.4); color: #fff; box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -2px 4px rgba(0,0,0,.15), 0 10px 26px rgba(255,77,141,.5); }
+  .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; }
+  /* List screens (Discover / Following / Messages / DM) sit at the top. */
+  .screen.top { justify-content: flex-start; }
+  .list-wrap { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
+  /* People rows — premium soft-touch glass cards. */
+  .person-row { display: flex; align-items: center; gap: 12px; background: linear-gradient(155deg, rgba(255,255,255,.14), rgba(255,255,255,.05) 55%, rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.16); border-radius: 20px; padding: 12px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: inset 0 1px 1px rgba(255,255,255,.3), 0 10px 24px rgba(0,0,0,.35); }
+  .person-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; }
+  .person-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .person-info b { font-size: 15px; }
+  .person-meta { font-size: 12px; color: #a5a5b8; display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; flex: 0 0 auto; box-shadow: 0 0 6px rgba(34,197,94,.8); }
+  .online-dot.off { background: #666; box-shadow: none; }
+  .person-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .person-btn { padding: 9px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.28); font-size: 13px; font-weight: 800; cursor: pointer; color: #fff; font-family: inherit; background: linear-gradient(155deg, rgba(255,255,255,.28), rgba(255,255,255,.1) 55%, rgba(255,255,255,.06)); box-shadow: inset 0 1px 1px rgba(255,255,255,.45), 0 6px 16px rgba(0,0,0,.35); transition: transform .15s; }
+  .person-btn:active { transform: scale(.93); }
+  .person-btn.primary { background: linear-gradient(155deg, #ff6aa9, #ff4d8d 45%, #8b5cf6); border-color: rgba(255,255,255,.4); }
+  .conv-row { cursor: pointer; }
+  .conv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: 0 0 auto; }
+  .conv-time { font-size: 11px; color: #8a8a9e; }
+  /* Profile view. */
+  .view-avatar { width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 46px; font-weight: 800; margin: 0 auto 12px; box-shadow: 0 12px 32px rgba(255,77,141,.4); }
+  .view-avatar-img { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block; box-shadow: 0 12px 32px rgba(255,77,141,.4); }
+  /* DM chat. */
+  .dm-log { width: 100%; max-width: 480px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px; min-height: 200px; }
+  .dm-msg { max-width: 78%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-break: break-word; display: flex; flex-direction: column; gap: 2px; }
+  .dm-msg.me { align-self: flex-end; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); border-bottom-right-radius: 6px; }
+  .dm-msg.them { align-self: flex-start; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.1); border-bottom-left-radius: 6px; }
+  .dm-time { font-size: 10px; color: rgba(255,255,255,.55); align-self: flex-end; }
+  .dm-header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+  /* Small premium Follow pill on the call screen. */
+  button.pill { font-family: inherit; color: #fff; cursor: pointer; }
+  button.pill:disabled { opacity: .7; cursor: default; }
 </style>
 </head>
 <body>
@@ -282,6 +322,12 @@
       <option value="female">Female</option>
       <option value="other">Prefer not to say</option>
     </select>
+    <label>💎 per minute to call you</label>
+    <div class="row" style="align-items:center">
+      <input type="number" id="callPriceInput" min="0" max="100" value="2" disabled>
+      <button class="btn small" id="callPriceSaveBtn" onclick="saveCallPrice()" disabled>Save</button>
+    </div>
+    <p class="fine" style="margin-top:6px;text-align:left">People who call you pay this rate in diamonds per minute — you earn it.</p>
     <div class="rules">
       <b>Community rules</b><br>
       • Be respectful — no nudity, sexual content or harassment<br>
@@ -305,6 +351,11 @@
     <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
+  <div class="tab-row" id="lobbyTabs">
+    <button class="tab-btn active" id="tabDiscover" onclick="openTab('discover')">Discover</button>
+    <button class="tab-btn" id="tabFollowing" onclick="openTab('following')">Following</button>
+    <button class="tab-btn" id="tabMessages" onclick="openTab('messages')">Messages <span class="badge hidden" id="msgBadge">0</span></button>
+  </div>
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
   <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Matching</button>
   <p style="color:#aaa;font-size:14px;text-align:center">Tap Start Matching to meet a random stranger<br>on live video</p>
@@ -318,6 +369,62 @@
   <h2>Looking for a stranger…</h2>
   <p style="color:#aaa;margin-top:8px">Waiting for someone else to tap Start</p>
   <button class="btn ghost" style="max-width:220px" onclick="cancelFind()">Cancel</button>
+</div>
+
+<!-- 4b. PEOPLE (Discover / Following) -->
+<div class="screen top hidden" id="screen-people">
+  <div class="topbar">
+    <button class="btn small ghost" onclick="backToLobby()">← Back</button>
+    <b id="peopleTitle" style="font-size:17px">Discover</b>
+    <span style="width:70px"></span>
+  </div>
+  <div class="list-wrap" id="peopleList"></div>
+  <p class="fine hidden" id="peopleEmpty">Nobody here yet.</p>
+</div>
+
+<!-- 4c. PROFILE VIEW -->
+<div class="screen top hidden" id="screen-view-profile">
+  <div class="topbar">
+    <button class="btn small ghost" onclick="backToPeople()">← Back</button>
+    <b style="font-size:17px">Profile</b>
+    <span style="width:70px"></span>
+  </div>
+  <div class="card" style="text-align:center">
+    <div id="viewPhotoWrap"></div>
+    <h2 id="viewName" style="margin-bottom:4px"></h2>
+    <p id="viewMeta" style="color:#a5a5b8;font-size:14px"></p>
+    <p id="viewRate" style="color:#ffd166;font-size:16px;font-weight:800;margin-top:10px"></p>
+    <button class="btn" id="viewFollowBtn" onclick="toggleViewFollow()">Follow</button>
+    <div class="row">
+      <button class="btn ghost" onclick="messageViewedUser()">Message</button>
+      <button class="btn" id="viewCallBtn" onclick="callViewedUser()">Call</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4d. MESSAGES (inbox) -->
+<div class="screen top hidden" id="screen-messages">
+  <div class="topbar">
+    <button class="btn small ghost" onclick="backToLobby()">← Back</button>
+    <b style="font-size:17px">Messages</b>
+    <span style="width:70px"></span>
+  </div>
+  <div class="list-wrap" id="convList"></div>
+  <p class="fine hidden" id="convEmpty">No messages yet — follow someone and say hi.</p>
+</div>
+
+<!-- 4e. DM CHAT -->
+<div class="screen top hidden" id="screen-dm">
+  <div class="topbar">
+    <button class="btn small ghost" onclick="backToMessages()">← Back</button>
+    <b id="dmName" style="font-size:17px"></b>
+    <span id="dmPhotoWrap" style="width:70px;text-align:right"></span>
+  </div>
+  <div class="dm-log" id="dmLog"></div>
+  <div class="float-input-row" style="width:100%;max-width:480px">
+    <input type="text" id="dmInput" maxlength="500" placeholder="Message…" autocomplete="off" onkeydown="if(event.key==='Enter')sendDm()">
+    <button class="float-send" onclick="sendDm()" title="Send">➤</button>
+  </div>
 </div>
 
 <!-- 5. CALL -->
@@ -352,6 +459,8 @@
       <span class="pill" id="diamondPill" style="cursor:pointer" onclick="toggleBuyPanel()" title="Buy diamonds">💎 <b id="diamondCountCall">0</b></span>
       <span class="pill" id="freeTimePill">🎉 Free: 55s</span>
       <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
+      <span class="pill gold hidden" id="directRatePill"></span>
+      <button class="pill hidden" id="followPeerBtn" onclick="followPeerFromCall()" style="background:linear-gradient(155deg,#ff6aa9,#ff4d8d 45%,#8b5cf6);border-color:rgba(255,255,255,.4);font-weight:800;font-size:12px">Follow</button>
       <span class="pill" id="netPill">📶 —</span>
     </div>
     <div id="giftFx"></div>
@@ -423,6 +532,20 @@
   </div>
 </div>
 
+<!-- Incoming direct call (someone is calling you by name) -->
+<div class="buy-overlay hidden" id="incomingCallOverlay">
+  <div class="buy-card" style="text-align:center">
+    <div id="incomingPhotoWrap"></div>
+    <h2 id="incomingName" style="margin-bottom:6px"></h2>
+    <p style="color:#a5a5b8;font-size:15px;margin-bottom:12px">wants to video call you</p>
+    <p id="incomingRate" style="color:#ffd166;font-size:15px;font-weight:800;margin-bottom:20px"></p>
+    <div class="row">
+      <button class="btn" style="background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="acceptIncomingCall()">Accept</button>
+      <button class="btn" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="declineIncomingCall()">Decline</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 // ---------- config ----------
@@ -431,13 +554,14 @@ const params = new URLSearchParams(location.search);
 // Override for testing: ?ws=ws://192.168.1.5:3000
 const WS_URL = params.get('ws') || ((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
 
-// Gifts must match the server's catalog (server.js).
+// Gifts must match the server's catalog (server.js). These are the fallback
+// costs (in diamonds) — the live prices come from GET /api/gifts.
 const GIFTS = [
-  { id: 'rose',    emoji: '🌹', name: 'Rose',    cost: 10 },
-  { id: 'heart',   emoji: '❤️', name: 'Heart',   cost: 25 },
-  { id: 'diamond', emoji: '💎', name: 'Diamond', cost: 50 },
-  { id: 'crown',   emoji: '👑', name: 'Crown',   cost: 100 },
-  { id: 'rocket',  emoji: '🚀', name: 'Rocket',  cost: 200 },
+  { id: 'rose',    emoji: '🌹', name: 'Rose',    cost: 1 },
+  { id: 'heart',   emoji: '❤️', name: 'Heart',   cost: 2 },
+  { id: 'diamond', emoji: '💎', name: 'Diamond', cost: 5 },
+  { id: 'crown',   emoji: '👑', name: 'Crown',   cost: 10 },
+  { id: 'rocket',  emoji: '🚀', name: 'Rocket',  cost: 20 },
 ];
 
 // Premium gold icons for the gift tray (replaces cartoon emoji).
@@ -450,7 +574,16 @@ const GIFT_ICONS = {
 };
 let ws = null, pc = null, localStream = null;
 let myId = null, myCoins = 0, myDiamonds = 0, myNickname = 'Guest', myGender = 'other';
-let peerId = null, peerName = 'Stranger';
+let myCallPrice = 2, myEmail = '';
+let peerId = null, peerName = 'Stranger', peerEmail = '';
+// Chamet-style social state: who I follow, the list I'm looking at,
+// who I'm viewing / messaging, and any incoming direct call.
+let following = [];
+let peopleMode = 'discover';
+let viewedUser = null;
+let dmWith = null, dmWithName = '';
+let incomingCall = null;
+let unreadTotal = 0;
 let micOn = true, camOn = true;
 let swapped = false, peerVerified = false, peerPhoto = null, myPhoto = null;
 let freeTrial = false;
@@ -470,6 +603,8 @@ function setProfileFormEnabled(enabled) {
   $('nickname').disabled = !enabled;
   $('gender').disabled = !enabled;
   $('continueBtn').disabled = !enabled;
+  $('callPriceInput').disabled = !enabled;
+  $('callPriceSaveBtn').disabled = !enabled;
   $('signinHint').classList.toggle('hidden', enabled);
 }
 
@@ -728,6 +863,18 @@ function handle(msg) {
       break;
     case 'welcome':
       myId = msg.id; setCoins(msg.coins); setDiamonds(msg.diamonds || 0);
+      // My own call price (diamonds/min) and the gift catalog come with
+      // the welcome so the profile form and gift tray are pre-filled.
+      if (msg.callPrice != null) {
+        myCallPrice = msg.callPrice;
+        $('callPriceInput').value = myCallPrice;
+      }
+      if (Array.isArray(msg.gifts) && msg.gifts.length) {
+        GIFTS.length = 0;
+        msg.gifts.forEach(g => GIFTS.push({ id: g.id, emoji: g.emoji, name: g.name, cost: g.cost }));
+      }
+      if (myProfile && myProfile.email) myEmail = String(myProfile.email).toLowerCase();
+      renderGifts();
       if (msg.freeTrial) {
         freeTrial = true;
         $('trialPill').classList.remove('hidden');
@@ -754,7 +901,22 @@ function handle(msg) {
       peerName = msg.peer.nickname || 'Stranger';
       peerVerified = !!msg.peer.verified;
       peerPhoto = msg.peer.photo || null;
+      peerEmail = msg.peer.email || '';
       updatePeerLabel();
+      // Direct call (Chamet-style): show what the call costs / earns, and
+      // offer Follow on the stranger. Random matches show neither.
+      const ratePill = $('directRatePill');
+      if (msg.direct) {
+        ratePill.classList.remove('hidden');
+        ratePill.textContent = '💎 ' + (msg.rate != null ? msg.rate : 0) + '/min — ' + (msg.role === 'callee' ? "you're earning" : "you're paying");
+        $('freeTimePill').classList.add('hidden');
+      } else {
+        ratePill.classList.add('hidden');
+        $('freeTimePill').classList.remove('hidden');
+      }
+      const fp = $('followPeerBtn');
+      if (peerEmail && peerEmail !== myEmail) { fp.classList.remove('hidden'); fp.disabled = false; fp.textContent = following.includes(peerEmail) ? 'Following ✓' : 'Follow'; }
+      else fp.classList.add('hidden');
       $('chatLog').innerHTML = '';
       showChat();
       $('remoteCamOff').classList.add('hidden');
@@ -828,6 +990,70 @@ function handle(msg) {
       break;
     }
     case 'error': toast(msg.message || 'Something went wrong.'); break;
+    // ---- Chamet-style social ----
+    case 'call-price':
+      myCallPrice = msg.price;
+      $('callPriceInput').value = msg.price;
+      if (!msg.silent) toast('Call price set to 💎 ' + msg.price + '/min');
+      break;
+    case 'following':
+      following = Array.isArray(msg.following) ? msg.following : [];
+      updateViewFollowBtn();
+      if (peerEmail) {
+        const fp = $('followPeerBtn');
+        if (!fp.classList.contains('hidden')) { fp.textContent = following.includes(peerEmail) ? 'Following ✓' : 'Follow'; fp.disabled = following.includes(peerEmail); }
+      }
+      break;
+    case 'following-list':
+      renderPeople(msg.users || [], 'following');
+      break;
+    case 'online-users':
+      renderPeople(msg.users || [], 'discover');
+      break;
+    case 'dm': {
+      // A DM from someone. If their chat is open, show it live; otherwise
+      // badge the Messages tab and toast.
+      if (dmWith && msg.from === dmWith) {
+        appendDm(msg.from, msg.text, msg.time, false);
+        send({ type: 'get-dms', with: dmWith });
+      } else {
+        unreadTotal++;
+        setMsgBadge(unreadTotal);
+        toast('New message from ' + (msg.fromName || 'someone'));
+      }
+      break;
+    }
+    case 'dm-sent':
+      if (dmWith && msg.to === dmWith) appendDm('me', msg.text, msg.time, true);
+      break;
+    case 'dms':
+      if (msg.with === dmWith) renderDmLog(msg.messages || []);
+      break;
+    case 'conversations':
+      renderConversations(msg.list || []);
+      break;
+    case 'dm-unread':
+      unreadTotal = msg.total || 0;
+      setMsgBadge(unreadTotal);
+      break;
+    case 'incoming-call':
+      // A specific person is calling me. Ignore a second one while the
+      // modal is already up — I can only answer one call.
+      if (incomingCall) break;
+      incomingCall = msg;
+      $('incomingPhotoWrap').innerHTML = msg.from.photo
+        ? '<img class="view-avatar-img" src="' + escAttr(msg.from.photo) + '" alt="">'
+        : '<div class="view-avatar">' + escHtml((msg.from.nickname || '?').charAt(0).toUpperCase()) + '</div>';
+      $('incomingName').textContent = (msg.from.nickname || 'Someone') + (msg.from.verified ? ' ✓' : '');
+      $('incomingRate').textContent = "They'll pay your rate: 💎 " + myCallPrice + "/min";
+      $('incomingCallOverlay').classList.remove('hidden');
+      break;
+    case 'call-declined':
+      toast(msg.message || 'They declined your call.');
+      break;
+    case 'call-error':
+      toast(msg.message || 'Could not place the call.');
+      break;
   }
 }
 
@@ -942,6 +1168,7 @@ async function onOffer(offer) {
 function endCallUI() {
   closePC();
   peerId = null;
+  peerEmail = '';
   stopCallTimer();
   stopNetMonitor();
   $('giftPanel').classList.add('hidden');
@@ -949,6 +1176,9 @@ function endCallUI() {
   $('reactionBar').classList.add('hidden');
   $('remoteCamOff').classList.add('hidden');
   $('connectingOverlay').classList.add('hidden');
+  $('directRatePill').classList.add('hidden');
+  $('followPeerBtn').classList.add('hidden');
+  $('freeTimePill').classList.remove('hidden');
   resetSwap();
   setCallUIHidden(false); // never leave the next call starting with no buttons
   show('screen-lobby');
@@ -1234,9 +1464,13 @@ function toggleFilterPanel() {
   $('reactionBar').classList.add('hidden');
 }
 function toggleGiftPanel() {
+  const opening = $('giftPanel').classList.contains('hidden');
   $('giftPanel').classList.toggle('hidden');
   $('filterPanel').classList.add('hidden');
   $('reactionBar').classList.add('hidden');
+  // Refresh prices every time the tray opens, so an admin price change
+  // shows up without a reload.
+  if (opening) loadGiftCatalog();
 }
 function applyFilter(i) {
   currentFilter = i;
@@ -1338,14 +1572,205 @@ function addChatMsg(who, text, me, photo) {
   while (log.children.length > 6) log.removeChild(log.firstChild);
 }
 
+// ---------- Chamet-style social: follow / profiles / DMs / direct calls ----------
+// Small helpers — user text is never dropped into innerHTML raw.
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+function fmtTime(t) { return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+function avatarHtml(user, size) {
+  const name = user.nickname || 'MeetLive user';
+  const initial = escHtml(name.charAt(0).toUpperCase());
+  if (user.photo) return '<img class="person-avatar" style="width:' + size + 'px;height:' + size + 'px" src="' + escAttr(user.photo) + '" alt="">';
+  return '<div class="person-avatar" style="width:' + size + 'px;height:' + size + 'px">' + initial + '</div>';
+}
+function setMsgBadge(n) {
+  const b = $('msgBadge');
+  b.textContent = n;
+  b.classList.toggle('hidden', !n);
+}
+function setTab(name) {
+  ['Discover', 'Following', 'Messages'].forEach(t => $('tab' + t).classList.toggle('active', t.toLowerCase() === name));
+}
+function openTab(tab) {
+  // Tabs live on the lobby; going to a tab screen hides the lobby.
+  if (tab === 'discover') { peopleMode = 'discover'; send({ type: 'get-online-users' }); }
+  else if (tab === 'following') { peopleMode = 'following'; send({ type: 'get-following' }); }
+  else if (tab === 'messages') { send({ type: 'get-conversations' }); show('screen-messages'); setTab('messages'); return; }
+  show('screen-people');
+  setTab(tab);
+}
+function backToLobby() {
+  show('screen-lobby');
+  setTab('discover');
+}
+function backToPeople() {
+  if (peopleMode === 'following') send({ type: 'get-following' });
+  else send({ type: 'get-online-users' });
+  show('screen-people');
+}
+function backToMessages() {
+  dmWith = null;
+  send({ type: 'get-conversations' });
+  show('screen-messages');
+  setTab('messages');
+}
+function renderPeople(users, mode) {
+  peopleMode = mode;
+  $('peopleTitle').textContent = mode === 'following' ? 'Following' : 'Discover';
+  const list = $('peopleList');
+  list.innerHTML = '';
+  $('peopleEmpty').classList.toggle('hidden', users.length > 0);
+  users.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'person-row';
+    row.innerHTML = avatarHtml(u, 52) +
+      '<div class="person-info"><b>' + escHtml(u.nickname) + (u.verified ? ' ✓' : '') + '</b>' +
+      '<span class="person-meta"><span class="online-dot' + (u.online === false ? ' off' : '') + '"></span>' +
+      (u.online === false ? 'Offline' : 'Online') + ' · 💎 ' + (u.callPrice != null ? u.callPrice : 2) + '/min</span></div>' +
+      '<div class="person-actions">' +
+      '<button class="person-btn" data-act="view">View</button>' +
+      '<button class="person-btn" data-act="msg">Message</button>' +
+      '<button class="person-btn primary" data-act="call">Call</button>' +
+      '</div>';
+    row.querySelector('[data-act=view]').onclick = () => openProfileView(u);
+    row.querySelector('[data-act=msg]').onclick = () => openDm(u.email, u.nickname, u.photo);
+    row.querySelector('[data-act=call]').onclick = () => callPerson(u);
+    list.appendChild(row);
+  });
+}
+function openProfileView(u) {
+  viewedUser = u;
+  $('viewPhotoWrap').innerHTML = u.photo
+    ? '<img class="view-avatar-img" src="' + escAttr(u.photo) + '" alt="">'
+    : '<div class="view-avatar">' + escHtml((u.nickname || '?').charAt(0).toUpperCase()) + '</div>';
+  $('viewName').textContent = (u.nickname || 'MeetLive user') + (u.verified ? ' ✓' : '');
+  $('viewMeta').textContent = (u.gender === 'male' ? 'Male' : u.gender === 'female' ? 'Female' : '') + (u.online === false ? ' · Offline' : ' · Online');
+  $('viewRate').textContent = '💎 ' + (u.callPrice != null ? u.callPrice : 2) + '/min to call';
+  $('viewCallBtn').textContent = 'Call 💎 ' + (u.callPrice != null ? u.callPrice : 2) + '/min';
+  updateViewFollowBtn();
+  show('screen-view-profile');
+}
+function updateViewFollowBtn() {
+  const btn = $('viewFollowBtn');
+  if (!viewedUser) return;
+  const isFollowing = following.includes(viewedUser.email);
+  btn.textContent = isFollowing ? 'Unfollow' : 'Follow';
+}
+function toggleViewFollow() {
+  if (!viewedUser) return;
+  send({ type: following.includes(viewedUser.email) ? 'unfollow' : 'follow', email: viewedUser.email });
+}
+function messageViewedUser() {
+  if (!viewedUser) return;
+  openDm(viewedUser.email, viewedUser.nickname, viewedUser.photo);
+}
+function callViewedUser() {
+  if (!viewedUser) return;
+  callPerson(viewedUser);
+}
+function callPerson(u) {
+  send({ type: 'call-request', to: u.email });
+  toast('Calling ' + (u.nickname || 'user') + '…');
+}
+function followPeerFromCall() {
+  if (!peerEmail) return;
+  send({ type: 'follow', email: peerEmail });
+  const fp = $('followPeerBtn');
+  fp.disabled = true;
+  fp.textContent = 'Following ✓';
+}
+function renderConversations(list) {
+  const el = $('convList');
+  el.innerHTML = '';
+  $('convEmpty').classList.toggle('hidden', list.length > 0);
+  list.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'person-row conv-row';
+    row.innerHTML = avatarHtml(c, 52) +
+      '<div class="person-info"><b>' + escHtml(c.nickname) + '</b>' +
+      '<span class="person-meta">' + escHtml(c.lastText || '') + '</span></div>' +
+      '<div class="conv-right"><span class="conv-time">' + fmtTime(c.lastTime) + '</span>' +
+      (c.unread ? '<span class="badge">' + c.unread + '</span>' : '') + '</div>';
+    row.onclick = () => openDm(c.email, c.nickname, c.photo);
+    el.appendChild(row);
+  });
+}
+function openDm(email, name, photo) {
+  dmWith = email;
+  dmWithName = name || 'Chat';
+  $('dmName').textContent = dmWithName;
+  $('dmPhotoWrap').innerHTML = photo ? '<img class="dm-header-avatar" src="' + escAttr(photo) + '" alt="">' : '';
+  $('dmLog').innerHTML = '';
+  $('dmInput').value = '';
+  show('screen-dm');
+  send({ type: 'get-dms', with: email });
+}
+function renderDmLog(messages) {
+  const log = $('dmLog');
+  log.innerHTML = '';
+  messages.forEach(m => appendDm(m.from, m.text, m.time, m.from === myEmail));
+  log.scrollTop = log.scrollHeight;
+}
+function appendDm(from, text, time, mine) {
+  const log = $('dmLog');
+  const div = document.createElement('div');
+  div.className = 'dm-msg ' + (mine ? 'me' : 'them');
+  const textEl = document.createElement('span');
+  textEl.textContent = text;
+  const timeEl = document.createElement('span');
+  timeEl.className = 'dm-time';
+  timeEl.textContent = fmtTime(time);
+  div.appendChild(textEl);
+  div.appendChild(timeEl);
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+function sendDm() {
+  const input = $('dmInput');
+  const text = input.value.trim();
+  if (!text || !dmWith) return;
+  send({ type: 'dm', to: dmWith, text });
+  input.value = '';
+}
+// My own call price (diamonds/min others pay to call me).
+function saveCallPrice() {
+  const v = Math.max(0, Math.min(100, parseInt($('callPriceInput').value, 10) || 0));
+  send({ type: 'set-call-price', price: v });
+}
+// Incoming direct call modal.
+function acceptIncomingCall() {
+  if (!incomingCall) return;
+  send({ type: 'call-accept', fromId: incomingCall.from.id });
+  incomingCall = null;
+  $('incomingCallOverlay').classList.add('hidden');
+}
+function declineIncomingCall() {
+  if (!incomingCall) return;
+  send({ type: 'call-decline', fromId: incomingCall.from.id });
+  incomingCall = null;
+  $('incomingCallOverlay').classList.add('hidden');
+}
+
 // ---------- gifts ----------
+// Gift prices come from the server (GET /api/gifts) so the admin can
+// change them without an app update. Falls back to the hardcoded list.
+async function loadGiftCatalog() {
+  try {
+    const data = await (await fetch('/api/gifts')).json();
+    if (Array.isArray(data.gifts) && data.gifts.length) {
+      GIFTS.length = 0;
+      data.gifts.forEach(g => GIFTS.push({ id: g.id, emoji: g.emoji, name: g.name, cost: g.cost }));
+      renderGifts();
+    }
+  } catch {} // offline or server busy — keep the fallback prices
+}
 function renderGifts() {
   const tray = $('giftTray');
   tray.innerHTML = '';
   GIFTS.forEach(g => {
     const b = document.createElement('button');
     b.className = 'gift';
-    const costLabel = freeTrial ? 'FREE' : '<span class="coin-dot"></span>' + g.cost;
+    const costLabel = freeTrial ? 'FREE' : '💎 ' + g.cost;
     b.innerHTML = '<span class="emoji">' + (GIFT_ICONS[g.id] || '') + '</span>' + g.name + '<br><span class="cost">' + costLabel + '</span>';
     b.onclick = () => sendGift(g.id);
     tray.appendChild(b);

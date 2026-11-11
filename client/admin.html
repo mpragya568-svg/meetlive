@@ -32,7 +32,8 @@
   .btn.danger { background: #ef4444; }
   .btn.small { padding: 7px 13px; font-size: 13px; }
   .btn:disabled { opacity: .5; cursor: default; }
-  input[type=datetime-local], input[type=email] { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: #fff; outline: none; font-family: inherit; color-scheme: dark; }
+  input[type=datetime-local], input[type=email], input[type=number] { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: #fff; outline: none; font-family: inherit; color-scheme: dark; }
+  input[type=number] { width: 90px; }
   input[type=email] { flex: 1; min-width: 200px; }
   label.switch { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; cursor: pointer; }
   label.switch input { width: 20px; height: 20px; accent-color: #ff4d8d; }
@@ -125,6 +126,16 @@
         <button class="btn" onclick="saveTrial()">Save</button>
       </div>
       <div class="fine" id="trialStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>💎 Gift prices <span>(diamonds)</span></h2>
+      <div id="giftPriceRows"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" onclick="saveGiftPrices()">Save prices</button>
+        <span class="status" id="giftPriceStatus"></span>
+      </div>
+      <div class="fine">What each gift costs in diamonds. The app's gift tray updates the next time it opens.</div>
     </div>
 
     <div class="card">
@@ -319,16 +330,20 @@ function renderStats(st) {
   $('stGifts').textContent = st.totalGifts;
   $('trialPill').classList.toggle('hidden', !st.trialActive);
   $('uptimePill').textContent = 'Up ' + Math.floor(st.uptimeSec / 60) + 'm · ' + fmtTime(st.serverTime);
+  // st.gifts is the same array shape as GET /api/gifts — build a lookup by id.
+  const giftMap = {};
+  (st.gifts || []).forEach(g => { giftMap[g.id] = g; });
   const parts = Object.entries(st.giftCounts || {}).map(([k, n]) => {
-    const g = (st.gifts && st.gifts[k]) || { name: k, emoji: '🎁', cost: 0 };
+    const g = giftMap[k] || { name: k, emoji: '🎁', cost: 0 };
     return g.emoji + ' ' + g.name + ' ×' + n;
   });
   $('giftBreakdown').textContent = parts.length ? 'Gifts this run: ' + parts.join(' · ') : 'No gifts sent yet this run.';
+  renderGiftPrices(st.gifts || []);
   $('trialToggle').checked = !!st.trialSetting;
   $('trialUntil').value = isoToLocal(st.trialUntil);
   $('trialStatus').textContent = st.trialActive
-    ? 'Free trial is ON — all gifts cost 0 coins until ' + fmtTime(st.trialUntil) + '.'
-    : 'Free trial is OFF — gifts cost their normal coin price.';
+    ? 'Free trial is ON — all gifts cost 0 diamonds until ' + fmtTime(st.trialUntil) + '.'
+    : 'Free trial is OFF — gifts cost their normal diamond price.';
 }
 function renderUsers(users) {
   $('userCount').textContent = '(' + users.length + ')';
@@ -406,6 +421,42 @@ async function saveTrial() {
     toast(r.trialActive ? 'Free trial is ON.' : 'Free trial is OFF.');
     loadAll();
   } catch (e) { toast(e.message); }
+}
+// Gift prices (diamonds). The rows are only rebuilt when the gift list
+// itself changes — the 10s auto-refresh must not clobber an admin's typing.
+let giftPriceIds = '';
+function renderGiftPrices(gifts) {
+  const wrap = $('giftPriceRows');
+  const ids = (gifts || []).map(g => g.id).join(',');
+  if (giftPriceIds !== ids) {
+    giftPriceIds = ids;
+    wrap.innerHTML = (gifts || []).map(g =>
+      '<div class="row" style="margin-bottom:8px"><span style="width:130px">' + esc(g.emoji) + ' ' + esc(g.name) + '</span>' +
+      '<input type="number" id="giftPrice-' + esc(g.id) + '" min="0" max="1000" value="' + g.cost + '"> <span>💎</span></div>'
+    ).join('');
+  } else {
+    (gifts || []).forEach(g => {
+      const el = $('giftPrice-' + g.id);
+      if (el && document.activeElement !== el) el.value = g.cost;
+    });
+  }
+}
+async function saveGiftPrices() {
+  const gifts = {};
+  document.querySelectorAll('#giftPriceRows input[type=number]').forEach(el => {
+    const id = el.id.replace('giftPrice-', '');
+    gifts[id] = { cost: Math.max(0, Math.min(1000, parseInt(el.value, 10) || 0)) };
+  });
+  $('giftPriceStatus').textContent = 'Saving…';
+  try {
+    const r = await api('/admin/api/gifts', { method: 'POST', body: JSON.stringify({ gifts }) });
+    $('giftPriceStatus').textContent = 'Saved ✓';
+    toast('Gift prices saved.');
+    renderGiftPrices(r.gifts || []);
+  } catch (e) {
+    $('giftPriceStatus').textContent = '';
+    toast(e.message);
+  }
 }
 initAuth();
 </script>

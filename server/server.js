@@ -60,14 +60,35 @@ const FREE_CALL_SECONDS = 55;
 const DIAMOND_RATE_SECONDS = 30; // 1 diamond per 30s after the free period
 const START_DIAMONDS = 0; // new accounts start with no diamonds — they buy them
 
-// Gifts catalog — same list the client shows. Cost in coins.
-const GIFTS = {
-  rose:    { name: 'Rose',    emoji: '🌹', cost: 10 },
-  heart:   { name: 'Heart',   emoji: '❤️', cost: 25 },
-  diamond: { name: 'Diamond', emoji: '💎', cost: 50 },
-  crown:   { name: 'Crown',   emoji: '👑', cost: 100 },
-  rocket:  { name: 'Rocket',  emoji: '🚀', cost: 200 },
+// Gifts catalog — costs are in DIAMONDS now (not coins) and live in
+// gifts.json so the admin can change the prices without a redeploy.
+// Same gift ids/emojis/names the client shows.
+const GIFTS_PATH = path.join(__dirname, 'gifts.json');
+const DEFAULT_GIFTS = {
+  rose:    { name: 'Rose',    emoji: '🌹', cost: 1 },
+  heart:   { name: 'Heart',   emoji: '❤️', cost: 2 },
+  diamond: { name: 'Diamond', emoji: '💎', cost: 5 },
+  crown:   { name: 'Crown',   emoji: '👑', cost: 10 },
+  rocket:  { name: 'Rocket',  emoji: '🚀', cost: 20 },
 };
+let GIFTS = {};
+for (const [id, g] of Object.entries(DEFAULT_GIFTS)) GIFTS[id] = { ...g };
+let giftsLoaded = false;
+try {
+  const saved = JSON.parse(fs.readFileSync(GIFTS_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') {
+    for (const [id, g] of Object.entries(saved)) {
+      if (g && typeof g === 'object' && typeof g.cost === 'number') {
+        GIFTS[id] = { name: g.name || id, emoji: g.emoji || '🎁', cost: Math.max(0, Math.floor(g.cost)) };
+      }
+    }
+    giftsLoaded = true;
+  }
+} catch {}
+// Create the file with the defaults if it was missing (or unreadable).
+if (!giftsLoaded) saveGifts();
+function saveGifts() { try { fs.writeFileSync(GIFTS_PATH, JSON.stringify(GIFTS, null, 2)); } catch {} }
+function giftCatalog() { return Object.entries(GIFTS).map(([id, g]) => ({ id, name: g.name, emoji: g.emoji, cost: g.cost })); }
 
 // ---- diamond buying (Stripe Checkout) ----
 // The diamond packages sold through Stripe. Price IDs are the test-mode
@@ -118,6 +139,59 @@ function setDiamondBalance(email, n) {
 function syncDiamonds(user) {
   if (user.verified && user.verified.email) setDiamondBalance(user.verified.email, user.diamonds);
 }
+
+// ---- profiles: each user's public listing + what they charge to be called ----
+// Chamet-style: anyone can set their own diamonds-per-minute price, and
+// callers pay that rate while the callee earns it. Keyed by lowercase email.
+// Same ephemeral-disk caveat as the diamond balances.
+const DEFAULT_CALL_PRICE = 2; // diamonds per minute to call someone
+const PROFILES_PATH = path.join(__dirname, 'profiles.json');
+let profiles = {};
+try {
+  const saved = JSON.parse(fs.readFileSync(PROFILES_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') profiles = saved;
+} catch {}
+function saveProfiles() { try { fs.writeFileSync(PROFILES_PATH, JSON.stringify(profiles, null, 2)); } catch {} }
+
+// ---- follows: who each user follows (Chamet-style friend list) ----
+const FOLLOWS_PATH = path.join(__dirname, 'follows.json');
+let follows = {};
+try {
+  const saved = JSON.parse(fs.readFileSync(FOLLOWS_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') follows = saved;
+} catch {}
+function saveFollows() { try { fs.writeFileSync(FOLLOWS_PATH, JSON.stringify(follows, null, 2)); } catch {} }
+
+// ---- direct messages: one conversation per pair of emails ----
+// Key is the two lowercase emails sorted and joined with '|', so both
+// directions share the same conversation. Capped at 200 messages each.
+const DMS_PATH = path.join(__dirname, 'dms.json');
+let dms = {};
+try {
+  const saved = JSON.parse(fs.readFileSync(DMS_PATH, 'utf8'));
+  if (saved && typeof saved === 'object') dms = saved;
+} catch {}
+function saveDMs() { try { fs.writeFileSync(DMS_PATH, JSON.stringify(dms, null, 2)); } catch {} }
+// Unread counts live in memory only (a restart clears badges, not messages).
+const unreadCounts = new Map(); // recipientEmail -> Map senderEmail -> count
+function bumpUnread(to, from) {
+  const t = String(to).toLowerCase(), f = String(from).toLowerCase();
+  let m = unreadCounts.get(t);
+  if (!m) { m = new Map(); unreadCounts.set(t, m); }
+  m.set(f, (m.get(f) || 0) + 1);
+}
+function clearUnread(userEmail, fromEmail) {
+  const m = unreadCounts.get(String(userEmail).toLowerCase());
+  if (m) m.delete(String(fromEmail).toLowerCase());
+}
+function totalUnread(userEmail) {
+  const m = unreadCounts.get(String(userEmail).toLowerCase());
+  if (!m) return 0;
+  let t = 0;
+  for (const n of m.values()) t += n;
+  return t;
+}
+function dmKey(a, b) { return [String(a).toLowerCase(), String(b).toLowerCase()].sort().join('|'); }
 
 const app = express();
 // Stripe's payment webhook needs the raw body to verify its signature, so
@@ -333,7 +407,7 @@ app.get('/admin/api/stats', requireAdmin, (req, res) => {
     totalMessages: stats.totalMessages,
     totalGifts: stats.totalGifts,
     giftCounts: stats.giftCounts,
-    gifts: Object.fromEntries(Object.entries(GIFTS).map(([k, g]) => [k, { name: g.name, emoji: g.emoji, cost: g.cost }])),
+    gifts: giftCatalog(), // same array shape as GET /api/gifts
     trialActive: trialActive(),
     trialSetting: FREE_TRIAL,
     trialUntil: FREE_TRIAL_UNTIL.toISOString(),
@@ -402,6 +476,27 @@ app.post('/admin/api/trial', requireAdmin, (req, res) => {
   saveAdminConfig();
   res.json({ ok: true, trialActive: trialActive(), trialSetting: FREE_TRIAL, trialUntil: FREE_TRIAL_UNTIL.toISOString() });
 });
+// Gift prices (diamonds) — the admin can change what each gift costs.
+app.post('/admin/api/gifts', requireAdmin, (req, res) => {
+  const incoming = req.body?.gifts;
+  if (!incoming || typeof incoming !== 'object') return res.status(400).json({ error: 'Send { gifts: { id: { cost } } }.' });
+  for (const [id, g] of Object.entries(incoming)) {
+    if (!GIFTS[id]) continue; // unknown gift id — ignore it
+    const cost = Math.floor(Number(g && g.cost));
+    if (!Number.isFinite(cost) || cost < 0 || cost > 1000) {
+      return res.status(400).json({ error: 'Each gift cost must be an integer 0..1000.' });
+    }
+    GIFTS[id].cost = cost;
+  }
+  saveGifts();
+  res.json({ ok: true, gifts: giftCatalog() });
+});
+
+// ---- Gift catalog API ----
+// The client fetches this to render the gift tray (diamond costs).
+app.get('/api/gifts', (req, res) => {
+  res.json({ gifts: giftCatalog() });
+});
 
 // ---- Diamond buying API ----
 // The packages the app shows, and whether buying is switched on.
@@ -446,6 +541,7 @@ const clients = new Map(); // ws -> user
 const waiting = [];        // users waiting for a match
 const pairs = new Map();   // userId -> partner user
 const reports = [];        // report log (also appended to reports.log)
+const pendingCalls = new Map(); // target user id -> { from: user } (direct call requests)
 
 // Stats for the admin portal (reset when the server restarts).
 const stats = { totalMatches: 0, totalMessages: 0, totalGifts: 0, giftCounts: {}, startedAt: Date.now() };
@@ -472,9 +568,34 @@ function endPair(user, reason) {
     pairs.delete(partner.id);
     send(partner.ws, { type: 'peer-left', reason: reason || 'left' });
   }
-  // The billing clock stops with the call.
-  user.callStartAt = null; user.diamondsBilled = 0;
-  if (partner) { partner.callStartAt = null; partner.diamondsBilled = 0; }
+  // The billing clock stops with the call, and so does direct-call billing.
+  user.callStartAt = null; user.diamondsBilled = 0; user.direct = null;
+  if (partner) { partner.callStartAt = null; partner.diamondsBilled = 0; partner.direct = null; }
+}
+
+// Find an online user by their (lowercase) email, or null.
+function findUserByEmail(email) {
+  const key = String(email || '').toLowerCase();
+  if (!key) return null;
+  for (const u of clients.values()) {
+    if (u.verified && String(u.verified.email).toLowerCase() === key) return u;
+  }
+  return null;
+}
+
+// One directory entry for the Discover / Following lists and the DM inbox.
+// Live data when the person is online, their saved profile when offline.
+// Returns null when there is no profile at all (nothing to show).
+function resolveDirectoryEntry(email) {
+  const key = String(email || '').toLowerCase();
+  if (!key) return null;
+  const online = findUserByEmail(key);
+  if (online) {
+    return { email: key, nickname: online.nickname, photo: online.photo || null, callPrice: online.callPrice != null ? online.callPrice : DEFAULT_CALL_PRICE, gender: online.gender, verified: true, online: true };
+  }
+  const p = profiles[key];
+  if (!p) return null;
+  return { email: key, nickname: p.nickname || 'MeetLive user', photo: p.photo || null, callPrice: p.callPrice != null ? p.callPrice : DEFAULT_CALL_PRICE, gender: p.gender || 'other', verified: true, online: false };
 }
 
 // Try to pair `user` with someone waiting. Skips people either side blocked.
@@ -487,22 +608,53 @@ function tryMatch(user) {
     pairs.set(user.id, other);
     pairs.set(other.id, user);
     stats.totalMatches++;
+    // Random matches are never direct calls.
+    user.direct = null; other.direct = null;
     // Start the billing clock for both: 55s free, then diamonds.
     user.callStartAt = Date.now(); user.diamondsBilled = 0;
     other.callStartAt = Date.now(); other.diamondsBilled = 0;
     // `user` is the initiator: they create the WebRTC offer.
-    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds });
-    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: other.diamonds });
+    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null, email: other.verified ? String(other.verified.email).toLowerCase() : '', callPrice: other.callPrice }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds });
+    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: user.verified ? String(user.verified.email).toLowerCase() : '', callPrice: user.callPrice }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: other.diamonds });
     return true;
   }
   return false;
 }
 
 // ---- call billing (runs every 5s) ----
-// After the free 55s, each 30s block costs 1 diamond from each person.
-// Someone who cannot pay has their call ended.
+// Random matches: after the free 55s, each 30s block costs 1 diamond from
+// each person. Someone who cannot pay has their call ended.
+// Direct calls (Chamet-style): there is NO free period — the CALLER pays
+// the callee's rate (ratePerMin / 2 diamonds per 30s block) and the CALLEE
+// earns exactly that amount. The callee is never charged.
 function billPair(user, partner) {
   const now = Date.now();
+  const direct = user.direct && partner.direct
+    && user.direct.partnerId === partner.id && partner.direct.partnerId === user.id;
+  if (direct) {
+    const caller = user.direct.role === 'caller' ? user : partner;
+    const callee = caller === user ? partner : user;
+    if (!caller.callStartAt) return;
+    const elapsed = (now - caller.callStartAt) / 1000;
+    const blocks = Math.floor(elapsed / DIAMOND_RATE_SECONDS); // no free period
+    const perBlock = caller.direct.ratePerMin / 2;
+    const owed = (blocks - (caller.diamondsBilled || 0)) * perBlock;
+    if (owed <= 0) return;
+    if (caller.diamonds >= owed) {
+      caller.diamonds -= owed;
+      caller.diamondsBilled = blocks;
+      callee.diamonds += owed;
+      syncDiamonds(caller);
+      syncDiamonds(callee);
+      send(caller.ws, { type: 'diamonds', diamonds: caller.diamonds });
+      send(callee.ws, { type: 'diamonds', diamonds: callee.diamonds });
+    } else {
+      // Caller is out of diamonds — end the call for both.
+      send(caller.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
+      endPair(caller, 'out-of-diamonds');
+    }
+    return;
+  }
   for (const u of [user, partner]) {
     if (!u.callStartAt) continue;
     const elapsed = (now - u.callStartAt) / 1000;
@@ -545,13 +697,15 @@ wss.on('connection', (ws) => {
     gender: 'other',
     coins: START_COINS,
     diamonds: START_DIAMONDS, // pays for call time after the free 55s
+    callPrice: DEFAULT_CALL_PRICE, // diamonds per minute others pay to call this user
+    direct: null, // direct-call billing { role, ratePerMin, partnerId } while in one
     callStartAt: null,         // set when matched; drives the billing clock
     diamondsBilled: 0,        // 30s blocks already charged for this call
     blocked: new Set(), // user ids this user never wants to match again
     joinedAt: Date.now(),
   };
   clients.set(ws, user);
-  send(ws, { type: 'welcome', id: user.id, coins: user.coins, diamonds: user.diamonds, freeTrial: trialActive() });
+  send(ws, { type: 'welcome', id: user.id, coins: user.coins, diamonds: user.diamonds, freeTrial: trialActive(), callPrice: DEFAULT_CALL_PRICE, gifts: giftCatalog() });
   broadcastOnline();
 
   ws.on('message', (raw) => {
@@ -591,6 +745,26 @@ wss.on('connection', (ws) => {
         // shown to the matched stranger when the camera is off.
         user.photo = typeof msg.photo === 'string' ? msg.photo.slice(0, 200000) : null;
         user.joined = true;
+        // Call price + public profile: load their own rate (default 2) and
+        // keep their nickname/photo on file so follows and DMs can show
+        // them even when they are offline.
+        const emailKey = String(profile.email).toLowerCase();
+        const savedProfile = profiles[emailKey];
+        user.callPrice = savedProfile && typeof savedProfile.callPrice === 'number'
+          ? Math.max(0, Math.min(100, Math.floor(savedProfile.callPrice)))
+          : DEFAULT_CALL_PRICE;
+        profiles[emailKey] = {
+          callPrice: user.callPrice,
+          nickname: user.nickname,
+          photo: user.photo || null,
+          gender: user.gender,
+        };
+        saveProfiles();
+        // Silent: this just (re)states the saved price after login — the
+        // client pre-fills the input without a "Call price set" toast.
+        send(ws, { type: 'call-price', price: user.callPrice, silent: true });
+        // Unread DMs badge for the Messages tab.
+        send(ws, { type: 'dm-unread', total: totalUnread(emailKey) });
         break;
       }
 
@@ -647,17 +821,20 @@ wss.on('connection', (ws) => {
         const gift = GIFTS[msg.gift];
         if (!gift || !partner) break;
         // During the free trial, gifts cost 0 so everyone can gift freely.
+        // Cost is in DIAMONDS now — the receiver earns them, like a host.
         const cost = trialActive() ? 0 : gift.cost;
-        if (user.coins < cost) {
-          send(ws, { type: 'error', message: 'Not enough coins — tap + to get free demo coins.' });
+        if (user.diamonds < cost) {
+          send(ws, { type: 'error', message: 'Not enough diamonds — tap Buy to get more.' });
           break;
         }
-        user.coins -= cost;
-        partner.coins += cost; // receiver earns the coins, like a host on Chamet
+        user.diamonds -= cost;
+        partner.diamonds += cost;
+        syncDiamonds(user);
+        syncDiamonds(partner);
         stats.totalGifts++;
         stats.giftCounts[msg.gift] = (stats.giftCounts[msg.gift] || 0) + 1;
-        send(ws, { type: 'coins', coins: user.coins });
-        send(partner.ws, { type: 'coins', coins: partner.coins });
+        send(ws, { type: 'diamonds', diamonds: user.diamonds });
+        send(partner.ws, { type: 'diamonds', diamonds: partner.diamonds });
         send(partner.ws, { type: 'gift', from: user.id, nickname: user.nickname, gift: msg.gift, emoji: gift.emoji, name: gift.name });
         send(ws, { type: 'gift-sent', gift: msg.gift, emoji: gift.emoji, name: gift.name });
         break;
@@ -707,12 +884,187 @@ wss.on('connection', (ws) => {
       case 'leave':
         endPair(user, 'left');
         break;
+
+      // ---- Chamet-style social: call price, follows, DMs, direct calls ----
+
+      // Your own diamonds-per-minute price to be called (0..100).
+      case 'set-call-price': {
+        let price = parseInt(msg.price, 10);
+        if (isNaN(price)) break;
+        price = Math.max(0, Math.min(100, price));
+        user.callPrice = price;
+        const email = String(user.verified.email).toLowerCase();
+        const p = profiles[email] || (profiles[email] = { callPrice: DEFAULT_CALL_PRICE, nickname: user.nickname, photo: user.photo || null, gender: user.gender });
+        p.callPrice = price;
+        saveProfiles();
+        send(ws, { type: 'call-price', price });
+        break;
+      }
+
+      case 'follow': {
+        const me = String(user.verified.email).toLowerCase();
+        const target = String(msg.email || '').trim().toLowerCase();
+        if (target && target !== me) {
+          const list = follows[me] || (follows[me] = []);
+          if (!list.includes(target)) { list.push(target); saveFollows(); }
+        }
+        send(ws, { type: 'following', following: (follows[me] || []).slice() });
+        break;
+      }
+
+      case 'unfollow': {
+        const me = String(user.verified.email).toLowerCase();
+        const target = String(msg.email || '').trim().toLowerCase();
+        if (target && follows[me]) {
+          follows[me] = follows[me].filter(e => e !== target);
+          saveFollows();
+        }
+        send(ws, { type: 'following', following: (follows[me] || []).slice() });
+        break;
+      }
+
+      // The people you follow, with live data when they are online.
+      case 'get-following': {
+        const me = String(user.verified.email).toLowerCase();
+        const users = (follows[me] || []).map(e => resolveDirectoryEntry(e)).filter(Boolean);
+        send(ws, { type: 'following-list', users });
+        break;
+      }
+
+      // Everyone online right now (except you) — the Discover list.
+      case 'get-online-users': {
+        const me = String(user.verified.email).toLowerCase();
+        const users = [];
+        for (const u of clients.values()) {
+          if (!u.verified || u === user) continue;
+          const email = String(u.verified.email).toLowerCase();
+          if (!email || email === me) continue;
+          users.push({ email, nickname: u.nickname, photo: u.photo || null, callPrice: u.callPrice != null ? u.callPrice : DEFAULT_CALL_PRICE, gender: u.gender, verified: true });
+        }
+        send(ws, { type: 'online-users', users });
+        break;
+      }
+
+      // Send a direct message. Stored even when the other person is
+      // offline, so it is waiting for them; delivered live when online.
+      case 'dm': {
+        const to = String(msg.to || '').trim().toLowerCase();
+        const text = String(msg.text || '').slice(0, 500);
+        if (!to || !text) break;
+        const from = String(user.verified.email).toLowerCase();
+        if (to === from) break;
+        const key = dmKey(from, to);
+        const conv = dms[key] || (dms[key] = []);
+        const entry = { from, to, text, time: Date.now() };
+        conv.push(entry);
+        if (conv.length > 200) conv.splice(0, conv.length - 200); // keep newest 200
+        saveDMs();
+        bumpUnread(to, from);
+        const target = findUserByEmail(to);
+        if (target) send(target.ws, { type: 'dm', from, fromName: user.nickname, text, time: entry.time });
+        send(ws, { type: 'dm-sent', to, text, time: entry.time });
+        break;
+      }
+
+      // One conversation's history (oldest first). Opening it clears
+      // that conversation's unread count for you.
+      case 'get-dms': {
+        const other = String(msg.with || '').trim().toLowerCase();
+        const me = String(user.verified.email).toLowerCase();
+        clearUnread(me, other);
+        send(ws, { type: 'dms', with: other, messages: (dms[dmKey(me, other)] || []).slice() });
+        send(ws, { type: 'dm-unread', total: totalUnread(me) });
+        break;
+      }
+
+      // Inbox: one entry per conversation, newest first.
+      case 'get-conversations': {
+        const me = String(user.verified.email).toLowerCase();
+        const list = [];
+        for (const key of Object.keys(dms)) {
+          const parts = key.split('|');
+          if (parts.length !== 2 || !parts.includes(me)) continue;
+          const other = parts[0] === me ? parts[1] : parts[0];
+          const conv = dms[key];
+          if (!conv || !conv.length) continue;
+          const last = conv[conv.length - 1];
+          const resolved = resolveDirectoryEntry(other);
+          list.push({
+            email: other,
+            nickname: resolved ? resolved.nickname : 'MeetLive user',
+            photo: resolved ? resolved.photo : null,
+            lastText: last.text,
+            lastTime: last.time,
+            unread: (unreadCounts.get(me) && unreadCounts.get(me).get(other)) || 0,
+          });
+        }
+        list.sort((a, b) => b.lastTime - a.lastTime);
+        send(ws, { type: 'conversations', list });
+        break;
+      }
+
+      // Call a specific person: they get a request and can accept or
+      // decline. The caller pays the callee's per-minute rate; the
+      // callee earns it. Nobody is paired until the callee accepts.
+      case 'call-request': {
+        const to = String(msg.to || '').trim().toLowerCase();
+        const me = String(user.verified.email).toLowerCase();
+        if (!to || to === me) { send(ws, { type: 'call-error', message: 'You cannot call yourself.' }); break; }
+        const target = findUserByEmail(to);
+        if (!target) { send(ws, { type: 'call-error', message: 'User is offline right now.' }); break; }
+        if (user.blocked.has(target.id) || target.blocked.has(user.id)) { send(ws, { type: 'call-error', message: 'Cannot call this user.' }); break; }
+        if (pairs.has(user.id) || pairs.has(target.id)) { send(ws, { type: 'call-error', message: 'Busy — already in a call.' }); break; }
+        pendingCalls.set(target.id, { from: user });
+        send(target.ws, { type: 'incoming-call', from: { id: user.id, nickname: user.nickname, photo: user.photo || null, email: me }, callPrice: user.callPrice });
+        break;
+      }
+
+      case 'call-accept': {
+        const req = pendingCalls.get(user.id);
+        if (!req || req.from.id !== Number(msg.fromId)) break;
+        const caller = req.from;
+        pendingCalls.delete(user.id);
+        // Pair like tryMatch, but as a direct call: no free seconds, and
+        // the caller pays the callee's rate while the callee earns it.
+        pairs.set(caller.id, user);
+        pairs.set(user.id, caller);
+        stats.totalMatches++;
+        caller.callStartAt = Date.now(); caller.diamondsBilled = 0;
+        user.callStartAt = Date.now(); user.diamondsBilled = 0;
+        const rate = user.callPrice; // the callee's rate
+        caller.direct = { role: 'caller', ratePerMin: rate, partnerId: user.id };
+        user.direct = { role: 'callee', ratePerMin: rate, partnerId: caller.id };
+        const calleeEmail = String(user.verified.email).toLowerCase();
+        const callerEmail = String(caller.verified.email).toLowerCase();
+        send(caller.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: calleeEmail, callPrice: user.callPrice }, initiator: true, freeSeconds: 0, diamonds: caller.diamonds, direct: true, rate, role: 'caller' });
+        send(user.ws, { type: 'matched', peer: { id: caller.id, nickname: caller.nickname, gender: caller.gender, verified: !!caller.verified, photo: caller.photo || null, email: callerEmail, callPrice: caller.callPrice }, initiator: false, freeSeconds: 0, diamonds: user.diamonds, direct: true, rate, role: 'callee' });
+        break;
+      }
+
+      case 'call-decline': {
+        const req = pendingCalls.get(user.id);
+        if (!req || req.from.id !== Number(msg.fromId)) break;
+        pendingCalls.delete(user.id);
+        send(req.from.ws, { type: 'call-declined', message: 'They declined your call.' });
+        break;
+      }
     }
   });
 
   ws.on('close', () => {
     removeFromWaiting(user);
     endPair(user, 'disconnected');
+    // A pending direct-call request dies with either side. If the caller
+    // left, the person waiting gets told instead of waiting forever.
+    for (const [targetId, req] of pendingCalls) {
+      if (req.from === user) {
+        const target = findUserById(targetId);
+        if (target) send(target.ws, { type: 'call-error', message: 'Caller disconnected.' });
+        pendingCalls.delete(targetId);
+      } else if (targetId === user.id) {
+        pendingCalls.delete(targetId);
+      }
+    }
     clients.delete(ws);
     broadcastOnline();
   });

@@ -1,0 +1,7 @@
+{
+  "rose": { "name": "Rose", "emoji": "🌹", "cost": 1 },
+  "heart": { "name": "Heart", "emoji": "❤️", "cost": 2 },
+  "diamond": { "name": "Diamond", "emoji": "💎", "cost": 5 },
+  "crown": { "name": "Crown", "emoji": "👑", "cost": 10 },
+  "rocket": { "name": "Rocket", "emoji": "🚀", "cost": 20 }
+}
