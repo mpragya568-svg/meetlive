@@ -282,11 +282,13 @@
   <div class="topbar">
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
     <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
+    <span class="pill" style="cursor:pointer" onclick="freeDiamonds()" title="Tap for 10 free diamonds">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="event.stopPropagation(); freeDiamonds()">+10 free</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
   <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Matching</button>
   <p style="color:#aaa;font-size:14px;text-align:center">Tap Start Matching to meet a random stranger<br>on live video</p>
+  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:6px">First 55 seconds of every call are free — after that it's 1 💎 per 30 seconds.</p>
   <p class="fine">Tip: open this page in a second browser window to test matching — you need 2 people online to get a match.</p>
 </div>
 
@@ -327,6 +329,8 @@
     <div class="peer-label">🎥 <span id="peerName">Stranger</span> · <span id="connState">connecting…</span> · <span id="callTimer">00:00</span></div>
     <div class="call-top">
       <span class="pill"><span class="coin-dot"></span><b id="coinCountCall">0</b></span>
+      <span class="pill" id="diamondPill" style="cursor:pointer" onclick="freeDiamonds()" title="Tap for 10 free diamonds">💎 <b id="diamondCountCall">0</b></span>
+      <span class="pill" id="freeTimePill">🎉 Free: 55s</span>
       <span class="pill gold hidden" id="trialPillCall">🎉 Gifts free</span>
       <span class="pill" id="netPill">📶 —</span>
     </div>
@@ -412,7 +416,7 @@ const GIFT_ICONS = {
   rocket: '<svg viewBox="0 0 24 24"><g fill="url(#giftGrad)"><path d="M12 2c2.8 1.8 4.3 5 4.3 8.6 0 1.2-.2 2.4-.6 3.4H8.3c-.4-1-.6-2.2-.6-3.4C7.7 7 9.2 3.8 12 2z"/><path d="M8.5 12.5L4.5 18l4.3-1.2z"/><path d="M15.5 12.5L19.5 18l-4.3-1.2z"/></g><circle cx="12" cy="9" r="2" fill="#0a0a15"/><path d="M12 15.5L10.2 19.5 12 22.5 13.8 19.5Z" fill="#ff9f43"/></svg>',
 };
 let ws = null, pc = null, localStream = null;
-let myId = null, myCoins = 0, myNickname = 'Guest', myGender = 'other';
+let myId = null, myCoins = 0, myDiamonds = 0, myNickname = 'Guest', myGender = 'other';
 let peerId = null, peerName = 'Stranger';
 let micOn = true, camOn = true;
 let swapped = false, peerVerified = false, peerPhoto = null, myPhoto = null;
@@ -555,6 +559,11 @@ function setCoins(n) {
   $('coinCount').textContent = n;
   $('coinCountCall').textContent = n;
 }
+function setDiamonds(n) {
+  myDiamonds = n;
+  $('diamondCount').textContent = n;
+  $('diamondCountCall').textContent = n;
+}
 function send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
 
 // ---------- screens ----------
@@ -685,7 +694,7 @@ function handle(msg) {
       show('screen-profile');
       break;
     case 'welcome':
-      myId = msg.id; setCoins(msg.coins);
+      myId = msg.id; setCoins(msg.coins); setDiamonds(msg.diamonds || 0);
       if (msg.freeTrial) {
         freeTrial = true;
         $('trialPill').classList.remove('hidden');
@@ -696,6 +705,11 @@ function handle(msg) {
       break;
     case 'online': $('onlineCount').textContent = msg.count; break;
     case 'coins': setCoins(msg.coins); break;
+    case 'diamonds': setDiamonds(msg.diamonds); break;
+    case 'time-up':
+      toast(msg.message || 'Out of diamonds — the call has ended.');
+      endCallUI();
+      break;
     case 'searching':
       // If we're already in a call, a late 'searching' must not kick us
       // back to the waiting screen.
@@ -715,6 +729,9 @@ function handle(msg) {
       updateCamOffPhotos();
       resetSwap();
       setCallUIHidden(false); // a new match always starts with the buttons visible
+      // Every call starts with 55 free seconds, then diamonds pay for time.
+      callFreeSeconds = msg.freeSeconds || 55;
+      setDiamonds(msg.diamonds != null ? msg.diamonds : myDiamonds);
       isInitiator = !!msg.initiator;
       pendingCandidates = [];
       setConnState('connecting…');
@@ -770,6 +787,7 @@ function handle(msg) {
       const why = msg.reason === 'next' ? 'Stranger skipped to the next person.'
         : msg.reason === 'reported' ? 'Stranger was reported.'
         : msg.reason === 'blocked' ? 'Stranger left.'
+        : msg.reason === 'out-of-diamonds' ? 'Stranger ran out of diamonds.'
         : 'Stranger left the call.';
       toast(why);
       endCallUI();
@@ -887,21 +905,40 @@ function endCallUI() {
 }
 
 // ---------- call timer + network quality ----------
-let callStartTime = 0, callTimerId = 0, netIntervalId = 0;
+// Free-time countdown: the first `callFreeSeconds` of a call are free,
+// then the call costs 1 diamond per 30s (billed by the server).
+let callStartTime = 0, callTimerId = 0, netIntervalId = 0, callFreeSeconds = 55;
+function updateFreeTimePill() {
+  const pill = $('freeTimePill');
+  if (!pill || !callStartTime) return;
+  const s = Math.floor((Date.now() - callStartTime) / 1000);
+  const left = Math.max(0, callFreeSeconds - s);
+  if (left > 0) {
+    pill.textContent = '🎉 Free: ' + left + 's';
+    pill.classList.remove('gold');
+  } else {
+    pill.textContent = myDiamonds <= 2 ? '💎 1 per 30s · ' + myDiamonds + ' left' : '💎 1 per 30s';
+    pill.classList.add('gold');
+  }
+}
 function startCallTimer() {
   stopCallTimer();
   callStartTime = Date.now();
   $('callTimer').textContent = '00:00';
+  updateFreeTimePill();
   callTimerId = setInterval(() => {
     const s = Math.floor((Date.now() - callStartTime) / 1000);
     const mm = String(Math.floor(s / 60)).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');
     $('callTimer').textContent = mm + ':' + ss;
+    updateFreeTimePill();
   }, 1000);
 }
 function stopCallTimer() {
   if (callTimerId) { clearInterval(callTimerId); callTimerId = 0; }
   $('callTimer').textContent = '00:00';
+  const pill = $('freeTimePill');
+  if (pill) { pill.textContent = '🎉 Free: ' + callFreeSeconds + 's'; pill.classList.remove('gold'); }
 }
 function startNetMonitor() {
   stopNetMonitor();
@@ -1292,6 +1329,7 @@ function blockPeer() {
   endCallUI();
 }
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
+function freeDiamonds() { send({ type: 'free-diamonds' }); toast('+10 free diamonds 💎'); }
 
 renderGifts();
 renderFilterPanel();

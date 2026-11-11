@@ -51,6 +51,15 @@ let FREE_TRIAL = adminConfig.trialActive !== false;
 let FREE_TRIAL_UNTIL = new Date(adminConfig.trialUntil || '2026-11-13T23:59:59-05:00');
 function trialActive() { return FREE_TRIAL && new Date() < FREE_TRIAL_UNTIL; }
 
+// ---- call billing: the first 55s of every call are free, then it costs diamonds ----
+// Each person pays for their own time: 1 diamond per 30s after the free 55s.
+// When someone runs out of diamonds mid-call, the call ends for both.
+// (Demo currency for now: everyone starts with free diamonds and can tap
+// for more. Plug in a real payment flow before charging real money.)
+const FREE_CALL_SECONDS = 55;
+const DIAMOND_RATE_SECONDS = 30; // 1 diamond per 30s after the free period
+const START_DIAMONDS = 10; // free diamonds every new visitor starts with
+
 // Gifts catalog — same list the client shows. Cost in coins.
 const GIFTS = {
   rose:    { name: 'Rose',    emoji: '🌹', cost: 10 },
@@ -227,6 +236,7 @@ app.get('/admin/api/users', requireAdmin, (req, res) => {
     photo: u.photo || null, // profile photo they picked in the app
     gender: u.gender,
     coins: u.coins,
+    diamonds: u.diamonds,
     status: pairs.has(u.id) ? 'in-call' : (waiting.includes(u) ? 'waiting' : 'idle'),
     partnerId: pairs.get(u.id) ? pairs.get(u.id).id : null,
     joinedAt: u.joinedAt,
@@ -314,6 +324,9 @@ function endPair(user, reason) {
     pairs.delete(partner.id);
     send(partner.ws, { type: 'peer-left', reason: reason || 'left' });
   }
+  // The billing clock stops with the call.
+  user.callStartAt = null; user.diamondsBilled = 0;
+  if (partner) { partner.callStartAt = null; partner.diamondsBilled = 0; }
 }
 
 // Try to pair `user` with someone waiting. Skips people either side blocked.
@@ -326,13 +339,54 @@ function tryMatch(user) {
     pairs.set(user.id, other);
     pairs.set(other.id, user);
     stats.totalMatches++;
+    // Start the billing clock for both: 55s free, then diamonds.
+    user.callStartAt = Date.now(); user.diamondsBilled = 0;
+    other.callStartAt = Date.now(); other.diamondsBilled = 0;
     // `user` is the initiator: they create the WebRTC offer.
-    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null }, initiator: true });
-    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null }, initiator: false });
+    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds });
+    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: other.diamonds });
     return true;
   }
   return false;
 }
+
+// ---- call billing (runs every 5s) ----
+// After the free 55s, each 30s block costs 1 diamond from each person.
+// Someone who cannot pay has their call ended.
+function billPair(user, partner) {
+  const now = Date.now();
+  for (const u of [user, partner]) {
+    if (!u.callStartAt) continue;
+    const elapsed = (now - u.callStartAt) / 1000;
+    const billable = Math.max(0, elapsed - FREE_CALL_SECONDS);
+    const blocks = Math.floor(billable / DIAMOND_RATE_SECONDS);
+    const owed = blocks - (u.diamondsBilled || 0);
+    if (owed <= 0) continue;
+    if (u.diamonds >= owed) {
+      u.diamonds -= owed;
+      u.diamondsBilled = blocks;
+      send(u.ws, { type: 'diamonds', diamonds: u.diamonds });
+    } else {
+      // Out of diamonds — end the call for both.
+      send(u.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
+      endPair(u, 'out-of-diamonds');
+      return;
+    }
+  }
+}
+setInterval(() => {
+  // Snapshot the pairs first (each pair appears twice in the map).
+  const done = new Set();
+  const list = [];
+  for (const [id, partner] of pairs) {
+    if (done.has(id) || done.has(partner.id)) continue;
+    const user = findUserById(id);
+    if (!user) continue;
+    done.add(id); done.add(partner.id);
+    list.push([user, partner]);
+  }
+  for (const [user, partner] of list) billPair(user, partner);
+}, 5000);
 
 wss.on('connection', (ws) => {
   const user = {
@@ -341,11 +395,14 @@ wss.on('connection', (ws) => {
     nickname: 'Guest',
     gender: 'other',
     coins: START_COINS,
+    diamonds: START_DIAMONDS, // pays for call time after the free 55s
+    callStartAt: null,         // set when matched; drives the billing clock
+    diamondsBilled: 0,        // 30s blocks already charged for this call
     blocked: new Set(), // user ids this user never wants to match again
     joinedAt: Date.now(),
   };
   clients.set(ws, user);
-  send(ws, { type: 'welcome', id: user.id, coins: user.coins, freeTrial: trialActive() });
+  send(ws, { type: 'welcome', id: user.id, coins: user.coins, diamonds: user.diamonds, freeTrial: trialActive() });
   broadcastOnline();
 
   ws.on('message', (raw) => {
@@ -458,6 +515,12 @@ wss.on('connection', (ws) => {
         // Replace with a real payment flow before launching publicly.
         user.coins += 100;
         send(ws, { type: 'coins', coins: user.coins });
+        break;
+
+      case 'free-diamonds':
+        // Demo only: free diamonds so people can keep calling without paying.
+        user.diamonds += 10;
+        send(ws, { type: 'diamonds', diamonds: user.diamonds });
         break;
 
       case 'report': {

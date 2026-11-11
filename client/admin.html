@@ -131,7 +131,7 @@
       <h2>👥 People online <span id="userCount"></span></h2>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Photo</th><th>Name</th><th>Email</th><th>Gender</th><th>Coins</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+          <thead><tr><th>Photo</th><th>Name</th><th>Email</th><th>Gender</th><th>Coins</th><th>💎</th><th>Status</th><th>Joined</th><th></th></tr></thead>
           <tbody id="userRows"></tbody>
         </table>
       </div>
@@ -339,6 +339,7 @@ function renderUsers(users) {
     '<td><span class="email">' + esc(u.email) + '</span></td>' +
     '<td>' + esc(u.gender) + '</td>' +
     '<td>' + u.coins + '</td>' +
+    '<td>💎 ' + (u.diamonds != null ? u.diamonds : 0) + '</td>' +
     '<td><span class="status ' + u.status + '">' + u.status + '</span></td>' +
     '<td>' + timeAgo(u.joinedAt) + '</td>' +
     '<td style="white-space:nowrap"><button class="btn ghost small" onclick="kickUser(' + u.id + ')">Kick</button> ' +
