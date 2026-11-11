@@ -247,7 +247,7 @@
         Sign in with Apple
       </button>
     </div>
-    <p id="signinHint" class="fine">Optional: sign in with Google for a ✓ verified badge and to buy diamonds — or just pick a name and go.</p>
+    <p id="signinHint" class="fine">Sign in with Google above to continue — guests can't use MeetLive.</p>
     <p id="authMissing" class="fine hidden">Google sign-in is not set up on this server yet.</p>
     <div id="signedInBox" class="signedin hidden">
       <img id="signedInPhoto" class="hidden" alt="">
@@ -292,7 +292,6 @@
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
     <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
     <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button></span>
-    <button class="btn small hidden" id="lobbySignInBtn" onclick="show('screen-profile')">Sign in</button>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
@@ -454,12 +453,13 @@ try { myProfile = JSON.parse(localStorage.getItem('meetlive_profile') || 'null')
 let authConfig = { googleClientId: null, appleClientId: null };
 let authBlocked = false; // server rejected this connection (no valid Google session)
 
-// Sign-in is optional now: the profile form is usable by guests too.
+// Google sign-in is required: the profile form stays locked until signed in.
 // Your display name is editable once signed in (pre-filled from Google).
 function setProfileFormEnabled(enabled) {
   $('nickname').disabled = !enabled;
   $('gender').disabled = !enabled;
   $('continueBtn').disabled = !enabled;
+  $('signinHint').classList.toggle('hidden', enabled);
 }
 
 function loadScript(src) {
@@ -476,10 +476,9 @@ async function initAuth() {
     authConfig = await (await fetch('/config')).json();
   } catch { return; }
   if (!authConfig.googleClientId && !authConfig.appleClientId) {
-    // No sign-in configured: guests can still use the app.
+    // No sign-in configured: the app cannot start (Google sign-in is required).
     $('signinHint').classList.add('hidden');
     $('authMissing').classList.remove('hidden');
-    setProfileFormEnabled(true);
     return;
   }
   $('authBox').classList.remove('hidden');
@@ -498,7 +497,6 @@ async function initAuth() {
     } catch {}
   }
   restoreSignedIn();
-  updateLobbySignInBtn();
 }
 
 function restoreSignedIn() {
@@ -552,13 +550,6 @@ function showSignedIn(profile) {
   $('nickname').value = profile.name.slice(0, 20);
   setProfileFormEnabled(true);
   loadMyPhoto();
-  updateLobbySignInBtn();
-}
-
-// Guests see a "Sign in" button in the lobby (needed to buy diamonds).
-function updateLobbySignInBtn() {
-  const showBtn = !sessionToken && !!(authConfig.googleClientId || authConfig.appleClientId);
-  $('lobbySignInBtn').classList.toggle('hidden', !showBtn);
 }
 
 function signOut() {
@@ -569,8 +560,7 @@ function signOut() {
   $('signedInBox').classList.add('hidden');
   if (authConfig.googleClientId || authConfig.appleClientId) $('authBox').classList.remove('hidden');
   $('nickname').value = '';
-  setProfileFormEnabled(true);
-  updateLobbySignInBtn();
+  setProfileFormEnabled(false);
 }
 
 const $ = (id) => document.getElementById(id);
@@ -603,7 +593,10 @@ function ageYes() { show('screen-profile'); }
 function ageNo() { $('ageNoMsg').style.display = 'block'; }
 
 async function startProfile() {
-  // Sign-in is optional: guests just pick a nickname and go.
+  if (!myProfile || !sessionToken) {
+    toast('Sign in with Google to continue.');
+    return;
+  }
   myNickname = ($('nickname').value || '').trim() || ('Guest' + Math.floor(1000 + Math.random() * 9000));
   $('localCamOffAvatar').textContent = myNickname.charAt(0).toUpperCase();
   myGender = $('gender').value;
@@ -711,15 +704,15 @@ function handle(msg) {
   switch (msg.type) {
     case 'auth-required':
       authBlocked = true;
-      // Banned account — clear the session; they can still join as a guest.
+      // Session expired or invalid — clear it so the user can sign in again.
       sessionToken = '';
       myProfile = null;
       localStorage.removeItem('meetlive_session');
       localStorage.removeItem('meetlive_profile');
       $('signedInBox').classList.add('hidden');
       if (authConfig.googleClientId || authConfig.appleClientId) $('authBox').classList.remove('hidden');
-      setProfileFormEnabled(true);
-      toast(msg.message || 'This account is banned from MeetLive.');
+      setProfileFormEnabled(false);
+      toast(msg.message || 'Sign in with Google to use MeetLive.');
       show('screen-profile');
       break;
     case 'welcome':
@@ -1412,7 +1405,7 @@ $('videoWrap').addEventListener('pointerdown', onVideoWrapPointerDown);
 $('videoWrap').addEventListener('pointerup', onVideoWrapPointerUp);
 $('videoWrap').addEventListener('pointercancel', () => { swipeTrack = null; });
 initAuth();
-setProfileFormEnabled(true);
+setProfileFormEnabled(false);
 loadDiamondPacks();
 // Back from Stripe Checkout after a purchase (or a cancelled one).
 if (params.get('bought')) toast('Payment successful! Your diamonds are being added. 💎');
