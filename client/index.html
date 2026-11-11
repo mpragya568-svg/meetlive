@@ -824,14 +824,18 @@ function handle(msg) {
 // STUN lets the two phones find each other. TURN relays the video when a
 // strict network blocks a direct connection (common cause of one-way video).
 // These are Open Relay's free test servers — replace with a paid TURN
-// (Metered / Twilio / Cloudflare) before a big public launch. Several
-// endpoints are listed so a blocked port doesn't kill the call: the relay
-// is tried on 80, 443 and 5349 (TURN over TLS).
+// (Metered / Twilio / Cloudflare) before a big public launch. The transport
+// matters: plain `turn:` defaults to UDP, so the TCP ports carry an
+// explicit `?transport=tcp` — without it the relay never answers and the
+// call sticks on "connecting…" with no video or audio. Several endpoints
+// are listed (UDP 3478, TCP 80/443, TLS 5349) so a blocked port or
+// transport doesn't kill the call.
 const RTC_CONFIG = { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:3478', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turns:openrelay.metered.ca:5349', username: 'openrelayproject', credential: 'openrelayproject' },
 ]};
 
@@ -866,8 +870,9 @@ async function startCall(initiator) {
       const rv = $('remoteVideo');
       if (rv.srcObject) rv.play().catch(() => {});
     }
-    // If the connection fails, the initiator restarts ICE with a new offer.
-    if (pc.connectionState === 'failed' && isInitiator) {
+    // If the connection drops or fails, the initiator restarts ICE with a
+    // new offer so the call recovers instead of sitting on "connecting…".
+    if ((pc.connectionState === 'failed' || pc.connectionState === 'disconnected') && isInitiator) {
       pc.createOffer({ iceRestart: true })
         .then((offer) => pc.setLocalDescription(offer))
         .then(() => send({ type: 'offer', data: pc.localDescription }))
