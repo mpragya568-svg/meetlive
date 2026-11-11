@@ -554,38 +554,42 @@ wss.on('connection', (ws) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     const partner = pairs.get(user.id);
-    // Google sign-in is required: only 'join' is accepted until the user
-    // has a verified Google session.
-    if (msg.type !== 'join' && (!user.verified || user.verified.provider !== 'google')) return;
+    // Ignore everything until the user has joined (guest or signed in).
+    if (msg.type !== 'join' && !user.joined) return;
 
     switch (msg.type) {
       case 'join': {
-        // Google sign-in is required: no guest joins.
+        // Sign-in is optional now: guests join with just a nickname.
+        // A valid Google session still gives the ✓ badge and loads
+        // their bought diamonds.
         const profile = getSession(msg.session);
-        if (!profile || profile.provider !== 'google') {
-          send(ws, { type: 'auth-required', message: 'Sign in with Google to use MeetLive.' });
-          setTimeout(() => { try { ws.close(); } catch {} }, 100);
-          break;
-        }
-        user.verified = profile;
-        // Banned accounts cannot join.
-        if (isBannedEmail(profile.email)) {
-          send(ws, { type: 'auth-required', message: 'This account is banned from MeetLive.' });
-          setTimeout(() => { try { ws.close(); } catch {} }, 100);
-          break;
-        }
-        // Load their bought diamonds (new accounts start with the free 10).
-        user.diamonds = getDiamondBalance(profile.email);
-        send(ws, { type: 'diamonds', diamonds: user.diamonds });
-        // Display name is editable after sign-in: use the typed name when
-        // given, otherwise the Google name. The ✓ badge stays — the user
-        // is still a verified Google account.
         const displayName = String(msg.nickname || '').trim().slice(0, 20);
-        user.nickname = displayName || profile.name.slice(0, 20);
+        if (profile && profile.provider === 'google') {
+          user.verified = profile;
+          // Banned accounts cannot join.
+          if (isBannedEmail(profile.email)) {
+            send(ws, { type: 'auth-required', message: 'This account is banned from MeetLive.' });
+            setTimeout(() => { try { ws.close(); } catch {} }, 100);
+            break;
+          }
+          // Load their bought diamonds.
+          user.diamonds = getDiamondBalance(profile.email);
+          send(ws, { type: 'diamonds', diamonds: user.diamonds });
+          // Display name is editable after sign-in: use the typed name
+          // when given, otherwise the Google name. The ✓ badge stays —
+          // the user is still a verified Google account.
+          user.nickname = displayName || profile.name.slice(0, 20);
+        } else {
+          // Guest: no verification, no bought diamonds, just a nickname.
+          user.verified = null;
+          user.diamonds = START_DIAMONDS;
+          user.nickname = displayName || ('Guest' + Math.floor(1000 + Math.random() * 9000));
+        }
         user.gender = ['male', 'female', 'other'].includes(msg.gender) ? msg.gender : 'other';
         // Optional profile photo (small data URL or a Google photo URL) —
         // shown to the matched stranger when the camera is off.
         user.photo = typeof msg.photo === 'string' ? msg.photo.slice(0, 200000) : null;
+        user.joined = true;
         break;
       }
 
