@@ -32,7 +32,7 @@ function isAdmin(profile) { return !!profile && profile.provider === 'google' &&
 // site is redeployed or the instance restarts. The file is the best we can
 // do without a database.
 const ADMIN_CONFIG_PATH = path.join(__dirname, 'admin-config.json');
-let adminConfig = { trialActive: true, trialUntil: '2026-11-13T23:59:59-05:00', bans: [] };
+let adminConfig = { trialActive: false, trialUntil: '2026-11-13T23:59:59-05:00', bans: [] };
 try {
   const saved = JSON.parse(fs.readFileSync(ADMIN_CONFIG_PATH, 'utf8'));
   if (saved && typeof saved === 'object') {
@@ -58,7 +58,7 @@ function trialActive() { return FREE_TRIAL && new Date() < FREE_TRIAL_UNTIL; }
 // for more. Plug in a real payment flow before charging real money.)
 const FREE_CALL_SECONDS = 55;
 const DIAMOND_RATE_SECONDS = 30; // 1 diamond per 30s after the free period
-const START_DIAMONDS = 10; // free diamonds every new visitor starts with
+const START_DIAMONDS = 0; // new accounts start with no diamonds — they buy them
 
 // Gifts catalog — same list the client shows. Cost in coins.
 const GIFTS = {
@@ -172,16 +172,42 @@ const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || '';
 const APPLE_KEY_ID = process.env.APPLE_KEY_ID || '';
 const APPLE_PRIVATE_KEY = (process.env.APPLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 
-// Short-lived sign-in sessions: token -> { profile, expires }.
-// In-memory only — a server restart signs everyone out (fine for now).
-const sessions = new Map();
+// ---- sign-in sessions (signed tokens, not stored server-side) ----
+// The old sessions lived in memory, so every redeploy wiped them and signed
+// everyone out. Now a session is a signed token: the server can verify it
+// without storing it, so it survives restarts and redeploys. The signing
+// secret MUST be set as SESSION_SECRET on Render (any long random string) —
+// it stays the same across deploys. Without it, sessions fall back to
+// in-memory only and a restart signs everyone out again.
+const SESSION_SECRET = process.env.SESSION_SECRET || '';
+const SESSION_TTL_MS = 24 * 3600 * 1000; // sessions last 24 hours
+const sessions = new Map(); // fallback store, only used when no SESSION_SECRET
 function createSession(profile) {
+  if (SESSION_SECRET) {
+    const payload = { profile, exp: Date.now() + SESSION_TTL_MS };
+    const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+    return data + '.' + sig;
+  }
   const token = crypto.randomBytes(24).toString('hex');
-  sessions.set(token, { profile, expires: Date.now() + 24 * 3600 * 1000 });
+  sessions.set(token, { profile, expires: Date.now() + SESSION_TTL_MS });
   return token;
 }
 function getSession(token) {
   if (!token) return null;
+  if (SESSION_SECRET) {
+    const parts = String(token).split('.');
+    if (parts.length !== 2) return null;
+    const [data, sig] = parts;
+    const expect = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+    if (sig.length !== expect.length) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+    try {
+      const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
+      if (!payload || !payload.profile || !payload.exp || payload.exp < Date.now()) return null;
+      return payload.profile;
+    } catch { return null; }
+  }
   const s = sessions.get(token);
   if (!s) return null;
   if (s.expires < Date.now()) { sessions.delete(token); return null; }
@@ -637,13 +663,6 @@ wss.on('connection', (ws) => {
         // Replace with a real payment flow before launching publicly.
         user.coins += 100;
         send(ws, { type: 'coins', coins: user.coins });
-        break;
-
-      case 'free-diamonds':
-        // Demo only: free diamonds so people can keep calling without paying.
-        user.diamonds += 10;
-        syncDiamonds(user);
-        send(ws, { type: 'diamonds', diamonds: user.diamonds });
         break;
 
       case 'report': {

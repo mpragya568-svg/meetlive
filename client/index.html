@@ -291,7 +291,7 @@
   <div class="topbar">
     <span class="pill"><span class="dot"></span><span id="onlineCount">0</span>&nbsp;online</span>
     <span class="pill"><span class="coin-dot"></span><b id="coinCount">0</b> <button class="btn small" style="margin-left:6px" onclick="freeCoins()">+100 free</button></span>
-    <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button> <button class="btn small" style="margin-left:6px" onclick="freeDiamonds()">+10 free</button></span>
+    <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">🎉 Free trial — all gifts are free!</div>
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
@@ -1352,7 +1352,6 @@ function blockPeer() {
   endCallUI();
 }
 function freeCoins() { send({ type: 'free-coins' }); toast('+100 demo coins'); }
-function freeDiamonds() { send({ type: 'free-diamonds' }); toast('+10 free diamonds 💎'); }
 
 // ---------- buying diamonds (Stripe Checkout) ----------
 let diamondPacks = [];
@@ -1372,12 +1371,10 @@ function renderBuyList(buyingEnabled) {
     '<div class="buy-row"><div><div class="amt">💎 ' + p.diamonds + '</div><div class="mins">≈ ' + mins(p.diamonds) + ' of calls</div></div>' +
     '<div style="display:flex;align-items:center;gap:10px"><span class="price">$' + p.price.toFixed(2) + '</span>' +
     '<button class="btn" ' + (buyingEnabled ? '' : 'disabled') + ' onclick="buyDiamonds(\'' + p.priceId + '\')">Buy</button></div></div>'
-  ).join('') +
-  '<div class="buy-row"><div><div class="amt">💎 10</div><div class="mins">Free demo diamonds</div></div>' +
-  '<button class="btn ghost" onclick="freeDiamonds(); toggleBuyPanel()">Get free</button></div>';
+  ).join('');
   $('buyNote').textContent = buyingEnabled
     ? 'Secure payment by Stripe. Your diamonds are added automatically after payment.'
-    : 'Real buying is not switched on yet — the free demo diamonds work for testing.';
+    : 'Real buying is not switched on yet.';
 }
 function toggleBuyPanel() { $('buyOverlay').classList.toggle('hidden'); }
 async function buyDiamonds(priceId) {
