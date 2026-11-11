@@ -823,13 +823,19 @@ function handle(msg) {
 // ---------- WebRTC ----------
 // STUN lets the two phones find each other. TURN relays the video when a
 // strict network blocks a direct connection (common cause of one-way video).
-// These are Open Relay's free test servers — replace with a paid TURN
+// These are the app's own dedicated Metered TURN servers (free trial tier,
+// account ravicharan319@gmail.com, app "meetlive") — the old shared
+// Open Relay test servers stopped working, which is why calls stuck on
+// "connecting…" with no video or audio. Replace with a paid TURN plan
 // (Metered / Twilio / Cloudflare) before a big public launch.
 const RTC_CONFIG = { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  { urls: 'turn:global.relay.metered.ca:80', username: '994bded3e29538f517e5417f', credential: 't9/stSccSjccf/fS' },
+  { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: '994bded3e29538f517e5417f', credential: 't9/stSccSjccf/fS' },
+  { urls: 'turn:global.relay.metered.ca:443', username: '994bded3e29538f517e5417f', credential: 't9/stSccSjccf/fS' },
+  { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: '994bded3e29538f517e5417f', credential: 't9/stSccSjccf/fS' },
 ]};
 
 function closePC() {
