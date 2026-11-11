@@ -824,12 +824,15 @@ function handle(msg) {
 // STUN lets the two phones find each other. TURN relays the video when a
 // strict network blocks a direct connection (common cause of one-way video).
 // These are Open Relay's free test servers — replace with a paid TURN
-// (Metered / Twilio / Cloudflare) before a big public launch.
+// (Metered / Twilio / Cloudflare) before a big public launch. Several
+// endpoints are listed so a blocked port doesn't kill the call: the relay
+// is tried on 80, 443 and 5349 (TURN over TLS).
 const RTC_CONFIG = { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:5349', username: 'openrelayproject', credential: 'openrelayproject' },
 ]};
 
 function closePC() {
@@ -848,12 +851,21 @@ async function startCall(initiator) {
       rv.srcObject = e.streams[0];
       // Some phones (notably iOS) won't start the video on their own —
       // an explicit play() fixes the black-video / stuck-on-connecting case.
+      // Retry once the video's metadata loads, in case the first play()
+      // was blocked before the track was ready.
       rv.play().catch(() => {});
+      rv.onloadedmetadata = () => rv.play().catch(() => {});
     }
   };
   pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'ice', data: e.candidate }); };
   pc.onconnectionstatechange = () => {
     setConnState(pc.connectionState);
+    // Once connected, make sure the stranger's video is actually playing
+    // (a blocked play() in ontrack leaves it black even when connected).
+    if (pc.connectionState === 'connected') {
+      const rv = $('remoteVideo');
+      if (rv.srcObject) rv.play().catch(() => {});
+    }
     // If the connection fails, the initiator restarts ICE with a new offer.
     if (pc.connectionState === 'failed' && isInitiator) {
       pc.createOffer({ iceRestart: true })
@@ -904,7 +916,11 @@ function setConnState(state) {
 }
 
 async function onOffer(offer) {
-  await startCall(false);
+  // Reuse the peer connection from 'matched' when it exists — creating a
+  // second one here threw away the first one's ICE candidates and made
+  // both phones wait on a connection that never came up (own video only,
+  // stranger's video black). Only create one if there is none yet.
+  if (!pc) await startCall(false);
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
   flushCandidates();
   const answer = await pc.createAnswer();
