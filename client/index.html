@@ -275,6 +275,40 @@
   .profile-popup-card h2 { font-size: 19px; margin-bottom: 4px; }
   .profile-popup-card .meta { color: #a5a5b8; font-size: 14px; }
   .profile-popup-card .rate { color: #ffd166; font-size: 16px; font-weight: 800; margin-top: 10px; }
+  /* Premium bottom navigation (Home / Messages / My Profile) — fixed,
+     dark charcoal, purple active glow, iPhone safe-area insets. It is
+     shown on the main screens only (never on the call, age gate or
+     searching screens); show() toggles body.has-nav. */
+  #bottomNav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: none; background: rgba(22,22,28,.97); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.1); padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+  body.has-nav #bottomNav { display: flex; }
+  .nav-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: #8a8a9e; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; padding: 6px 4px 2px; min-height: 52px; position: relative; transition: color .2s ease; }
+  .nav-btn svg { width: 26px; height: 26px; transition: filter .2s ease, transform .2s ease; }
+  .nav-btn.active { color: #a855f7; }
+  .nav-btn.active svg { filter: drop-shadow(0 0 8px rgba(168,85,247,.85)); transform: scale(1.06); }
+  .nav-btn:active { transform: scale(.94); }
+  .nav-badge { position: absolute; top: 2px; left: calc(50% + 4px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #16161c; box-sizing: border-box; }
+  /* Screens that show the nav get bottom padding so it never covers content. */
+  body.has-nav .screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  body.has-nav #screen-call { padding-bottom: 0; }
+  /* My Profile screen. */
+  .my-profile-head { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 480px; margin-bottom: 16px; }
+  .my-profile-photo { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, #ff4d8d, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; color: #fff; margin-bottom: 10px; border: 3px solid rgba(255,77,141,.5); overflow: hidden; }
+  .my-profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .my-profile-name { font-size: 20px; font-weight: 800; }
+  .my-profile-email { font-size: 13px; color: #a5a5b8; margin-top: 2px; }
+  .my-profile-meta { font-size: 13px; color: #a5a5b8; margin-top: 4px; }
+  .my-profile-bio { font-size: 14px; color: #ddd; line-height: 1.5; margin-top: 8px; max-width: 420px; }
+  .my-profile-stats { display: flex; gap: 8px; width: 100%; max-width: 480px; margin-bottom: 16px; }
+  .stat-block { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 12px 6px; text-align: center; cursor: pointer; font-family: inherit; color: #fff; }
+  .stat-block b { display: block; font-size: 19px; font-weight: 800; }
+  .stat-block span { font-size: 12px; color: #a5a5b8; }
+  .stat-block:active { transform: scale(.96); }
+  .edit-card { width: 100%; max-width: 480px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 16px; box-sizing: border-box; margin-bottom: 16px; }
+  .edit-card h3 { font-size: 16px; margin-bottom: 4px; }
+  .edit-card label { display: block; font-size: 13px; font-weight: 700; color: #a5a5b8; margin: 10px 0 5px; }
+  .edit-card input, .edit-card textarea { width: 100%; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); color: #fff; font-size: 15px; outline: none; font-family: inherit; box-sizing: border-box; }
+  .edit-card textarea { resize: vertical; min-height: 64px; }
+  .edit-card input:focus, .edit-card textarea:focus { border-color: #ff4d8d; }
   /* Narrow phones: shrink the profile card, timer and controls so
      nothing wraps or overflows — everything scales down instead. */
   @media (max-width: 380px) {
@@ -481,6 +515,48 @@
   </div>
 </div>
 
+
+<!-- 4f. MY PROFILE -->
+<div class="screen top hidden" id="screen-my-profile">
+  <div class="topbar">
+    <b style="font-size:17px">My Profile</b>
+  </div>
+  <div class="my-profile-head">
+    <div class="my-profile-photo" id="myProfilePhoto">?</div>
+    <div class="my-profile-name" id="myProfileName">—</div>
+    <div class="my-profile-email" id="myProfileEmail"></div>
+    <div class="my-profile-meta" id="myProfileMeta"></div>
+    <p class="my-profile-bio" id="myProfileBio"></p>
+  </div>
+  <div class="my-profile-stats">
+    <button class="stat-block" onclick="openMyFollowers()"><b id="statFollowers">0</b><span>Followers</span></button>
+    <button class="stat-block" onclick="openMyFollowing()"><b id="statFollowing">0</b><span>Following</span></button>
+    <button class="stat-block" onclick="openMyFriends()"><b id="statFriends">0</b><span>Friends</span></button>
+  </div>
+  <div class="edit-card">
+    <h3>Edit profile</h3>
+    <label>Display name</label>
+    <input type="text" id="editNickname" maxlength="20" placeholder="Your display name">
+    <label>Bio</label>
+    <textarea id="editBio" maxlength="150" placeholder="Tell people about yourself…"></textarea>
+    <label>Country</label>
+    <input type="text" id="editCountry" maxlength="40" placeholder="e.g. Nepal">
+    <label>Language</label>
+    <input type="text" id="editLanguage" maxlength="40" placeholder="e.g. Nepali">
+    <label>Diamonds per minute to call you</label>
+    <input type="number" id="editCallPrice" min="0" max="100" placeholder="2">
+    <button class="btn" style="margin-top:14px" onclick="saveMyProfile()">Save profile</button>
+  </div>
+  <div class="edit-card">
+    <h3>Account</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font-size:15px">💎 <b id="myProfileDiamonds">0</b> diamonds</span>
+      <button class="btn small" onclick="toggleBuyPanel()">Buy</button>
+    </div>
+    <button class="btn ghost" style="margin-top:12px" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
 <!-- 5. CALL -->
 <div class="screen hidden" id="screen-call">
   <div class="video-wrap" id="videoWrap">
@@ -578,6 +654,14 @@
     </div>
   </div>
 </div>
+
+
+<!-- Premium bottom navigation (Home / Messages / My Profile) -->
+<nav id="bottomNav" aria-label="Main navigation">
+  <button class="nav-btn active" id="navHomeBtn" onclick="goHome()" title="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></button>
+  <button class="nav-btn" id="navMsgBtn" onclick="goMessages()" title="Messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span>Messages</span><span class="nav-badge hidden" id="navMsgBadge">0</span></button>
+  <button class="nav-btn" id="navProfileBtn" onclick="goMyProfile()" title="My Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+</nav>
 
 <div id="toast"></div>
 
@@ -808,14 +892,31 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
+// Bottom nav: shown on the main screens, hidden on the age gate, the
+// searching screen and the full-screen call. The active tab follows the
+// screen so every navigation path keeps it in sync.
+const NAV_SCREENS = { 'screen-lobby': 'home', 'screen-people': 'home', 'screen-view-profile': 'home', 'screen-messages': 'messages', 'screen-dm': 'messages', 'screen-my-profile': 'profile', 'screen-profile': 'profile' };
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
   $(id).classList.remove('hidden');
+  const tab = NAV_SCREENS[id];
+  document.body.classList.toggle('has-nav', !!tab);
+  if (tab) setActiveNav(tab);
 }
+function setActiveNav(tab) {
+  $('navHomeBtn').classList.toggle('active', tab === 'home');
+  $('navMsgBtn').classList.toggle('active', tab === 'messages');
+  $('navProfileBtn').classList.toggle('active', tab === 'profile');
+}
+function goHome() { show('screen-lobby'); setTab('discover'); }
+function goMessages() { send({ type: 'get-conversations' }); show('screen-messages'); setTab('messages'); }
+function goMyProfile() { loadMyProfile(); show('screen-my-profile'); }
 function setDiamonds(n) {
   myDiamonds = n;
   $('diamondCount').textContent = n;
   $('diamondCountCall').textContent = n;
+  const mp = $('myProfileDiamonds');
+  if (mp) mp.textContent = n;
 }
 function send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
 
@@ -1097,6 +1198,19 @@ function handle(msg) {
       break;
     case 'following-list':
       renderPeople(msg.users || [], 'following');
+      break;
+    case 'followers-list':
+      renderPeople(msg.users || [], 'followers');
+      break;
+    case 'friends-list':
+      renderPeople(msg.users || [], 'friends');
+      break;
+    case 'my-profile':
+      fillMyProfile(msg.profile || {}, msg.stats || {});
+      break;
+    case 'profile-updated':
+      fillMyProfile(msg.profile || {}, null);
+      toast('Profile saved');
       break;
     case 'online-users':
       renderPeople(msg.users || [], 'discover');
@@ -1616,6 +1730,11 @@ function setMsgBadge(n) {
   const b = $('msgBadge');
   b.textContent = n;
   b.classList.toggle('hidden', !n);
+  const nb = $('navMsgBadge');
+  if (nb) {
+    nb.textContent = n > 99 ? '99+' : String(n);
+    nb.classList.toggle('hidden', !n);
+  }
 }
 function setTab(name) {
   ['Discover', 'Following', 'Messages'].forEach(t => $('tab' + t).classList.toggle('active', t.toLowerCase() === name));
@@ -1632,6 +1751,45 @@ function backToLobby() {
   show('screen-lobby');
   setTab('discover');
 }
+// ---------- My Profile screen ----------
+// Loads the signed-in user's profile + follower/following/friend counts.
+function loadMyProfile() { send({ type: 'get-my-profile' }); }
+function fillMyProfile(profile, stats) {
+  const photo = $('myProfilePhoto');
+  if (profile.photo) {
+    photo.innerHTML = '<img src="' + escAttr(profile.photo) + '" alt="">';
+  } else {
+    photo.textContent = (profile.nickname || '?').charAt(0).toUpperCase();
+  }
+  $('myProfileName').textContent = (profile.nickname || '—') + (profile.verified ? ' ✓' : '');
+  $('myProfileEmail').textContent = profile.email || '';
+  const meta = [profile.country, profile.language, profile.gender === 'male' ? 'Male' : profile.gender === 'female' ? 'Female' : ''].filter(Boolean);
+  $('myProfileMeta').textContent = meta.join(' · ') + (profile.callPrice != null ? (meta.length ? ' · ' : '') + '💎 ' + profile.callPrice + '/min' : '');
+  $('myProfileBio').textContent = profile.bio || '';
+  if (stats) {
+    $('statFollowers').textContent = stats.followers || 0;
+    $('statFollowing').textContent = stats.following || 0;
+    $('statFriends').textContent = stats.friends || 0;
+  }
+  // Pre-fill the edit form (only overwrite fields the user isn't typing in).
+  if (document.activeElement !== $('editNickname')) $('editNickname').value = profile.nickname || '';
+  if (document.activeElement !== $('editBio')) $('editBio').value = profile.bio || '';
+  if (document.activeElement !== $('editCountry')) $('editCountry').value = profile.country || '';
+  if (document.activeElement !== $('editLanguage')) $('editLanguage').value = profile.language || '';
+  if (document.activeElement !== $('editCallPrice')) $('editCallPrice').value = profile.callPrice != null ? profile.callPrice : 2;
+  $('myProfileDiamonds').textContent = myDiamonds;
+}
+function saveMyProfile() {
+  send({ type: 'update-profile',
+    nickname: $('editNickname').value.trim(),
+    bio: $('editBio').value,
+    country: $('editCountry').value.trim(),
+    language: $('editLanguage').value.trim(),
+    callPrice: parseInt($('editCallPrice').value, 10) });
+}
+function openMyFollowers() { send({ type: 'get-followers' }); show('screen-people'); }
+function openMyFollowing() { peopleMode = 'following'; send({ type: 'get-following' }); show('screen-people'); setTab('following'); }
+function openMyFriends() { send({ type: 'get-friends' }); show('screen-people'); }
 function backToPeople() {
   if (peopleMode === 'following') send({ type: 'get-following' });
   else send({ type: 'get-online-users' });
@@ -1645,7 +1803,7 @@ function backToMessages() {
 }
 function renderPeople(users, mode) {
   peopleMode = mode;
-  $('peopleTitle').textContent = mode === 'following' ? 'Following' : 'Discover';
+  $('peopleTitle').textContent = mode === 'following' ? 'Following' : mode === 'followers' ? 'Followers' : mode === 'friends' ? 'Friends' : 'Discover';
   const list = $('peopleList');
   list.innerHTML = '';
   $('peopleEmpty').classList.toggle('hidden', users.length > 0);

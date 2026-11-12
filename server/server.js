@@ -589,11 +589,11 @@ function resolveDirectoryEntry(email) {
   if (!key) return null;
   const online = findUserByEmail(key);
   if (online) {
-    return { email: key, nickname: online.nickname, photo: online.photo || null, callPrice: online.callPrice != null ? online.callPrice : DEFAULT_CALL_PRICE, gender: online.gender, verified: true, online: true };
+    return { email: key, nickname: online.nickname, photo: online.photo || null, callPrice: online.callPrice != null ? online.callPrice : DEFAULT_CALL_PRICE, gender: online.gender, verified: true, online: true, country: online.country || '', language: online.language || '', bio: online.bio || '' };
   }
   const p = profiles[key];
   if (!p) return null;
-  return { email: key, nickname: p.nickname || 'MeetLive user', photo: p.photo || null, callPrice: p.callPrice != null ? p.callPrice : DEFAULT_CALL_PRICE, gender: p.gender || 'other', verified: true, online: false };
+  return { email: key, nickname: p.nickname || 'MeetLive user', photo: p.photo || null, callPrice: p.callPrice != null ? p.callPrice : DEFAULT_CALL_PRICE, gender: p.gender || 'other', verified: true, online: false, country: p.country || '', language: p.language || '', bio: p.bio || '' };
 }
 
 // Try to pair `user` with someone waiting. Skips people either side blocked.
@@ -612,8 +612,8 @@ function tryMatch(user) {
     user.callStartAt = Date.now(); user.diamondsBilled = 0;
     other.callStartAt = Date.now(); other.diamondsBilled = 0;
     // `user` is the initiator: they create the WebRTC offer.
-    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null, email: other.verified ? String(other.verified.email).toLowerCase() : '', callPrice: other.callPrice }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds });
-    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: user.verified ? String(user.verified.email).toLowerCase() : '', callPrice: user.callPrice }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: other.diamonds });
+    send(user.ws, { type: 'matched', peer: { id: other.id, nickname: other.nickname, gender: other.gender, verified: !!other.verified, photo: other.photo || null, email: other.verified ? String(other.verified.email).toLowerCase() : '', callPrice: other.callPrice, country: other.country || '', language: other.language || '', bio: other.bio || '' }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds });
+    send(other.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: user.verified ? String(user.verified.email).toLowerCase() : '', callPrice: user.callPrice, country: user.country || '', language: user.language || '', bio: user.bio || '' }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: other.diamonds });
     return true;
   }
   return false;
@@ -750,11 +750,19 @@ wss.on('connection', (ws) => {
         user.callPrice = savedProfile && typeof savedProfile.callPrice === 'number'
           ? Math.max(0, Math.min(100, Math.floor(savedProfile.callPrice)))
           : DEFAULT_CALL_PRICE;
+        // Profile fields (country, language, bio) — empty until the user
+        // fills them in on the My Profile screen.
+        user.country = savedProfile && typeof savedProfile.country === 'string' ? savedProfile.country.slice(0, 40) : '';
+        user.language = savedProfile && typeof savedProfile.language === 'string' ? savedProfile.language.slice(0, 40) : '';
+        user.bio = savedProfile && typeof savedProfile.bio === 'string' ? savedProfile.bio.slice(0, 150) : '';
         profiles[emailKey] = {
           callPrice: user.callPrice,
           nickname: user.nickname,
           photo: user.photo || null,
           gender: user.gender,
+          country: user.country,
+          language: user.language,
+          bio: user.bio,
         };
         saveProfiles();
         // Silent: this just (re)states the saved price after login — the
@@ -877,10 +885,76 @@ wss.on('connection', (ws) => {
         price = Math.max(0, Math.min(100, price));
         user.callPrice = price;
         const email = String(user.verified.email).toLowerCase();
-        const p = profiles[email] || (profiles[email] = { callPrice: DEFAULT_CALL_PRICE, nickname: user.nickname, photo: user.photo || null, gender: user.gender });
+        const p = profiles[email] || (profiles[email] = { callPrice: DEFAULT_CALL_PRICE, nickname: user.nickname, photo: user.photo || null, gender: user.gender, country: user.country || '', language: user.language || '', bio: user.bio || '' });
         p.callPrice = price;
         saveProfiles();
         send(ws, { type: 'call-price', price });
+        break;
+      }
+
+      // Edit your own profile (My Profile screen): display name, bio,
+      // country, language and call price. Validated and clamped; the
+      // saved profile is echoed back so the screen can refresh.
+      case 'update-profile': {
+        const email = String(user.verified.email).toLowerCase();
+        const p = profiles[email] || (profiles[email] = { callPrice: DEFAULT_CALL_PRICE, nickname: user.nickname, photo: user.photo || null, gender: user.gender, country: '', language: '', bio: '' });
+        if (typeof msg.nickname === 'string' && msg.nickname.trim()) {
+          const nick = msg.nickname.trim().slice(0, 20);
+          user.nickname = nick; p.nickname = nick;
+        }
+        if (typeof msg.bio === 'string') { user.bio = msg.bio.slice(0, 150); p.bio = user.bio; }
+        if (typeof msg.country === 'string') { user.country = msg.country.slice(0, 40); p.country = user.country; }
+        if (typeof msg.language === 'string') { user.language = msg.language.slice(0, 40); p.language = user.language; }
+        if (msg.callPrice != null) {
+          let price = parseInt(msg.callPrice, 10);
+          if (!isNaN(price)) { price = Math.max(0, Math.min(100, price)); user.callPrice = price; p.callPrice = price; }
+        }
+        saveProfiles();
+        send(ws, { type: 'profile-updated', profile: { email, nickname: p.nickname, photo: p.photo || null, gender: p.gender, verified: true, callPrice: p.callPrice, country: p.country || '', language: p.language || '', bio: p.bio || '' } });
+        break;
+      }
+
+      // Your own profile + counts for the My Profile screen. Friends are
+      // mutual follows (you follow them and they follow you).
+      case 'get-my-profile': {
+        const me = String(user.verified.email).toLowerCase();
+        const p = profiles[me] || {};
+        const myFollows = follows[me] || [];
+        let followers = 0, friends = 0;
+        for (const [email, list] of Object.entries(follows)) {
+          if (email === me || !Array.isArray(list) || !list.includes(me)) continue;
+          followers++;
+          if (myFollows.includes(email)) friends++;
+        }
+        send(ws, { type: 'my-profile', profile: { email: me, nickname: user.nickname, photo: user.photo || null, gender: user.gender, verified: true, callPrice: user.callPrice != null ? user.callPrice : DEFAULT_CALL_PRICE, country: p.country || user.country || '', language: p.language || user.language || '', bio: p.bio || user.bio || '' }, stats: { followers, following: myFollows.length, friends } });
+        break;
+      }
+
+      // Mutual follows (you follow them and they follow you).
+      case 'get-friends': {
+        const me = String(user.verified.email).toLowerCase();
+        const myFollows = follows[me] || [];
+        const users = [];
+        for (const email of myFollows) {
+          const list = follows[email] || [];
+          if (!list.includes(me)) continue;
+          const entry = resolveDirectoryEntry(email);
+          if (entry) users.push(entry);
+        }
+        send(ws, { type: 'friends-list', users });
+        break;
+      }
+
+      // The people who follow you, with live data when they are online.
+      case 'get-followers': {
+        const me = String(user.verified.email).toLowerCase();
+        const users = [];
+        for (const [email, list] of Object.entries(follows)) {
+          if (email === me || !Array.isArray(list) || !list.includes(me)) continue;
+          const entry = resolveDirectoryEntry(email);
+          if (entry) users.push(entry);
+        }
+        send(ws, { type: 'followers-list', users });
         break;
       }
 
@@ -922,7 +996,7 @@ wss.on('connection', (ws) => {
           if (!u.verified || u === user) continue;
           const email = String(u.verified.email).toLowerCase();
           if (!email || email === me) continue;
-          users.push({ email, nickname: u.nickname, photo: u.photo || null, callPrice: u.callPrice != null ? u.callPrice : DEFAULT_CALL_PRICE, gender: u.gender, verified: true });
+          users.push({ email, nickname: u.nickname, photo: u.photo || null, callPrice: u.callPrice != null ? u.callPrice : DEFAULT_CALL_PRICE, gender: u.gender, verified: true, country: u.country || '', language: u.language || '', bio: u.bio || '' });
         }
         send(ws, { type: 'online-users', users });
         break;
@@ -1019,8 +1093,8 @@ wss.on('connection', (ws) => {
         user.direct = { role: 'callee', ratePerMin: rate, partnerId: caller.id };
         const calleeEmail = String(user.verified.email).toLowerCase();
         const callerEmail = String(caller.verified.email).toLowerCase();
-        send(caller.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: calleeEmail, callPrice: user.callPrice }, initiator: true, freeSeconds: 0, diamonds: caller.diamonds, direct: true, rate, role: 'caller' });
-        send(user.ws, { type: 'matched', peer: { id: caller.id, nickname: caller.nickname, gender: caller.gender, verified: !!caller.verified, photo: caller.photo || null, email: callerEmail, callPrice: caller.callPrice }, initiator: false, freeSeconds: 0, diamonds: user.diamonds, direct: true, rate, role: 'callee' });
+        send(caller.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: calleeEmail, callPrice: user.callPrice, country: user.country || '', language: user.language || '', bio: user.bio || '' }, initiator: true, freeSeconds: 0, diamonds: caller.diamonds, direct: true, rate, role: 'caller' });
+        send(user.ws, { type: 'matched', peer: { id: caller.id, nickname: caller.nickname, gender: caller.gender, verified: !!caller.verified, photo: caller.photo || null, email: callerEmail, callPrice: caller.callPrice, country: caller.country || '', language: caller.language || '', bio: caller.bio || '' }, initiator: false, freeSeconds: 0, diamonds: user.diamonds, direct: true, rate, role: 'callee' });
         break;
       }
 
