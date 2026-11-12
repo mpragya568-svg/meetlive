@@ -189,6 +189,30 @@
   .reaction-bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
   .reaction-bar button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: linear-gradient(155deg, rgba(255,255,255,.3), rgba(255,255,255,.1) 55%, rgba(255,255,255,.06)); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); font-size: 22px; cursor: pointer; box-shadow: inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.18), 0 8px 20px rgba(0,0,0,.4); transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease; }
   .reaction-bar button:active { transform: scale(.88); box-shadow: inset 0 2px 6px rgba(0,0,0,.25), 0 4px 10px rgba(0,0,0,.4); }
+  /* ---------- Chamet-style homepage (lobby) ---------- */
+  #screen-lobby { justify-content: flex-start; }
+  .hero { text-align: center; max-width: 520px; margin: 10px 0 4px; }
+  .hero h1 { font-size: 34px; line-height: 1.15; font-weight: 800; letter-spacing: -.5px; margin: 0 0 12px; }
+  .hero h1 em { font-style: normal; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero-sub { color: #c9c9d6; font-size: 15px; line-height: 1.55; margin: 0 0 20px; }
+  .hero-badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 18px 0 6px; }
+  .hero-badge { font-size: 12.5px; font-weight: 700; color: #d6d6e2; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); padding: 6px 12px; border-radius: 999px; }
+  .hero-badge .ok { color: #4ade80; }
+  .home-section { width: 100%; max-width: 520px; margin: 26px 0 0; }
+  .home-section h2 { font-size: 20px; font-weight: 800; margin: 0 0 4px; text-align: center; }
+  .home-section .sec-sub { color: #a9a9b8; font-size: 13.5px; text-align: center; margin: 0 0 16px; }
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .feature-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 18px; padding: 16px 14px; }
+  .feature-card .fic { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(255,77,141,.25), rgba(139,92,246,.25)); margin-bottom: 10px; }
+  .feature-card .fic svg { width: 20px; height: 20px; stroke: #ff8fb0; }
+  .feature-card h3 { font-size: 15px; font-weight: 800; margin: 0 0 5px; }
+  .feature-card p { font-size: 13px; line-height: 1.5; color: #b9b9c6; margin: 0; }
+  .safety-box { background: rgba(255,209,102,.07); border: 1px solid rgba(255,209,102,.25); border-radius: 18px; padding: 16px; font-size: 13.5px; line-height: 1.6; color: #e8e8ef; }
+  .safety-box b { color: #ffd166; }
+  .home-footer { width: 100%; max-width: 520px; margin: 30px 0 10px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.1); text-align: center; }
+  .home-footer a { color: #a9a9b8; font-size: 13.5px; text-decoration: none; margin: 0 10px; }
+  .home-footer a:active { color: #fff; }
+  .home-footer p { color: #77778a; font-size: 12px; margin: 12px 0 0; line-height: 1.5; }
   /* TikTok LIVE-style floating comments over the video (lower-left).
      Pointer-events pass through so swipes and PiP drags still work. */
   #liveComments { position: absolute; left: 12px; right: 12px; bottom: calc(160px + env(safe-area-inset-bottom)); z-index: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 6px; pointer-events: none; max-height: 260px; overflow: hidden; }
@@ -445,16 +469,71 @@
     <span class="pill">💎 <b id="diamondCount">0</b> <button class="btn small" style="margin-left:6px" onclick="toggleBuyPanel()">Buy</button></span>
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">Free trial — all gifts are free!</div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Meet someone new,<br><em>live on video.</em></h1>
+    <p class="hero-sub">One tap and you're face to face with a real person — no endless typing, just a quick hello that can turn into a real conversation.</p>
+    <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Video Chat</button>
+    <div class="hero-badges">
+      <span class="hero-badge"><span class="ok">✓</span> Verified profiles</span>
+      <span class="hero-badge"><span class="ok">✓</span> Real people</span>
+      <span class="hero-badge">18+ only</span>
+    </div>
+  </div>
+
+  <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
+  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:12px">First 55 seconds of every call are free — after that it's 1 💎 per 30 seconds.</p>
+
   <div class="tab-row" id="lobbyTabs">
     <button class="tab-btn active" id="tabDiscover" onclick="openTab('discover')">Discover</button>
     <button class="tab-btn" id="tabFollowing" onclick="openTab('following')">Following</button>
     <button class="tab-btn" id="tabMessages" onclick="openTab('messages')">Messages <span class="badge hidden" id="msgBadge">0</span></button>
   </div>
-  <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
-  <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Matching</button>
-  <p style="color:#aaa;font-size:14px;text-align:center">Tap Start Matching to meet a random stranger<br>on live video</p>
-  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:6px">First 55 seconds of every call are free — after that it's 1 💎 per 30 seconds.</p>
-  <p class="fine">Tip: open this page in a second browser window to test matching — you need 2 people online to get a match.</p>
+
+  <!-- FEATURES — only what's necessary -->
+  <div class="home-section" id="howItWorks">
+    <h2>What you can do here</h2>
+    <p class="sec-sub">Everything is built around real 1v1 video calls.</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg></div>
+        <h3>1v1 Random Video Chat</h3>
+        <p>Tap Start and meet a random stranger on live video. Not feeling it? Hit Next and meet someone new.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+        <h3>Direct Calls</h3>
+        <p>Call anyone you follow at the rate they set. You pay, they earn — in diamonds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></div>
+        <h3>Follow &amp; Messages</h3>
+        <p>Follow people you click with and message them anytime, even when you're not on a call.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></div>
+        <h3>Gifts &amp; Diamonds</h3>
+        <p>Send roses, hearts and rockets during a call. The other person earns the diamonds you send.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAFETY -->
+  <div class="home-section" id="safetyBox">
+    <h2>Stay safe</h2>
+    <div class="safety-box">
+      <b>18+ only.</b> No nudity, no harassment, no under-18s — anyone breaking the rules gets reported and blocked. Signing in with Google keeps profiles real and verified.
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="home-footer">
+    <a href="/privacy">Privacy</a>
+    <a href="#howItWorks">How it works</a>
+    <a href="#safetyBox">Safety</a>
+    <p>MeetLive — real people, real 1v1 video chat.<br>18+ only. Please be kind to strangers.</p>
+  </div>
 </div>
 
 <!-- 4. SEARCHING -->
