@@ -483,7 +483,7 @@
   </div>
 
   <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
-  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:12px">First 55 seconds of every call are free — after that it's 1 💎 per 30 seconds.</p>
+  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:12px">First 49 seconds of every call are free — after that you pay the other person's rate per minute.</p>
 
   <div class="tab-row" id="lobbyTabs">
     <button class="tab-btn active" id="tabDiscover" onclick="openTab('discover')">Discover</button>
@@ -679,7 +679,7 @@
       </div>
       <div class="call-timer-block">
         <span class="call-timer" id="callTimer">00:00:00</span>
-        <span class="call-free" id="freeTimePill">Free: 55s</span>
+        <span class="call-free" id="freeTimePill">Free: 49s</span>
       </div>
       <div class="call-status-pills">
         <span class="pill" id="diamondPill" style="cursor:pointer" onclick="toggleBuyPanel()" title="Buy diamonds">💎 <b id="diamondCountCall">0</b></span>
@@ -778,6 +778,21 @@
   </div>
 </div>
 
+<!-- Outgoing direct-call rate confirmation: the caller agrees to the rate
+     (and the 49s free trial) before the call is placed. -->
+<div class="buy-overlay hidden" id="confirmCallOverlay">
+  <div class="buy-card" style="text-align:center">
+    <div id="confirmCallPhotoWrap"></div>
+    <h2 id="confirmCallName" style="margin-bottom:6px"></h2>
+    <p id="confirmCallRate" style="color:#ffd166;font-size:16px;font-weight:800;margin-bottom:8px"></p>
+    <p style="color:#a5a5b8;font-size:14px;margin-bottom:20px">First 49 seconds are free. After that you're charged this rate — it stays locked for the whole call.</p>
+    <div class="row">
+      <button class="btn" style="background:linear-gradient(135deg,#ff6aa9,#a855f7)" onclick="confirmCallRequest()">Call</button>
+      <button class="btn ghost" onclick="cancelCallRequest()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Participant profile popup (call screen — the call stays behind it) -->
 <div class="profile-popup hidden" id="peerProfilePopup" onclick="if(event.target===this)closePeerProfile()">
   <div class="profile-popup-card">
@@ -835,6 +850,7 @@ let myId = null, myDiamonds = 0, myNickname = 'Guest', myGender = 'other';
 let myCallPrice = 2, myEmail = '';
 let peerId = null, peerName = 'Stranger', peerEmail = '';
 let peerCallPrice = null, peerGender = '';
+let callRatePerMin = 0; // diamonds/min THIS call costs me — locked when the call starts
 // Chamet-style social state: who I follow, the list I'm looking at,
 // who I'm viewing / messaging, and any incoming direct call.
 let following = [];
@@ -1179,16 +1195,21 @@ function handle(msg) {
       // offer Follow on the stranger. Random matches show the peer's rate
       // pill instead, and the rules banner comes back for every new match.
       const ratePill = $('directRatePill');
+      // The rate I'm actually billed at this call (locked by the server):
+      // direct = the callee's rate I'm paying (or earning, as callee);
+      // random = the stranger's rate. Shown before paid billing starts.
+      callRatePerMin = msg.direct ? (msg.rate != null ? msg.rate : 0) : (peerCallPrice != null ? peerCallPrice : 0);
       if (msg.direct) {
         ratePill.classList.remove('hidden');
         ratePill.textContent = '💎 ' + (msg.rate != null ? msg.rate : 0) + '/min — ' + (msg.role === 'callee' ? "you're earning" : "you're paying");
-        $('freeTimePill').classList.add('hidden');
         $('peerRatePill').classList.add('hidden');
       } else {
         ratePill.classList.add('hidden');
-        $('freeTimePill').classList.remove('hidden');
         if (peerCallPrice != null) $('peerRatePill').classList.remove('hidden');
       }
+      // Every call starts with a 49s free trial, direct calls included —
+      // the free countdown shows for both.
+      $('freeTimePill').classList.remove('hidden');
       const rb = $('rulesBanner');
       if (rb) rb.classList.remove('hidden');
       // Small circular Follow button next to the profile in the top bar.
@@ -1204,8 +1225,8 @@ function handle(msg) {
       updateCamOffPhotos();
       resetSwap();
       setCallUIHidden(false); // a new match always starts with the buttons visible
-      // Every call starts with 55 free seconds, then diamonds pay for time.
-      callFreeSeconds = msg.freeSeconds || 55;
+      // Every call starts with 49 free seconds, then diamonds pay for time.
+      callFreeSeconds = msg.freeSeconds || 49;
       setDiamonds(msg.diamonds != null ? msg.diamonds : myDiamonds);
       isInitiator = !!msg.initiator;
       pendingCandidates = [];
@@ -1331,7 +1352,7 @@ function handle(msg) {
         ? '<img class="view-avatar-img" src="' + escAttr(msg.from.photo) + '" alt="">'
         : '<div class="view-avatar">' + escHtml((msg.from.nickname || '?').charAt(0).toUpperCase()) + '</div>';
       $('incomingName').textContent = (msg.from.nickname || 'Someone') + (msg.from.verified ? ' ✓' : '');
-      $('incomingRate').textContent = "They'll pay your rate: 💎 " + myCallPrice + "/min";
+      $('incomingRate').textContent = "They'll pay your rate: 💎 " + myCallPrice + "/min · first 49s free";
       $('incomingCallOverlay').classList.remove('hidden');
       break;
     case 'call-declined':
@@ -1475,9 +1496,10 @@ function endCallUI() {
 }
 
 // ---------- call timer + network quality ----------
-// Free-time countdown: the first `callFreeSeconds` of a call are free,
-// then the call costs 1 diamond per 30s (billed by the server).
-let callStartTime = 0, callTimerId = 0, netIntervalId = 0, callFreeSeconds = 55;
+// Free-time countdown: the first `callFreeSeconds` (49s) of a call are free,
+// then the call costs the AGREED rate for this session (callRatePerMin,
+// locked by the server when the call started) — billed by the server.
+let callStartTime = 0, callTimerId = 0, netIntervalId = 0, callFreeSeconds = 49;
 function updateFreeTimePill() {
   const pill = $('freeTimePill');
   if (!pill || !callStartTime) return;
@@ -1487,7 +1509,10 @@ function updateFreeTimePill() {
     pill.textContent = '(Free: ' + left + 's)';
     pill.classList.remove('gold');
   } else {
-    pill.textContent = myDiamonds <= 2 ? '💎 1 per 30s · ' + myDiamonds + ' left' : '💎 1 per 30s';
+    // Paid mode: show the rate I'm actually being charged, and my balance
+    // when it's running low (under a minute's worth).
+    const rateTxt = '💎 ' + callRatePerMin + '/min';
+    pill.textContent = myDiamonds < callRatePerMin ? rateTxt + ' · ' + myDiamonds + ' left' : rateTxt;
     pill.classList.add('gold');
   }
 }
@@ -1967,9 +1992,31 @@ function callViewedUser() {
   if (!viewedUser) return;
   callPerson(viewedUser);
 }
+// Direct call: show the rate and get the caller's confirmation BEFORE the
+// call is placed — the agreed rate is locked for the session once it starts.
+let pendingCallUser = null;
 function callPerson(u) {
+  if (!u) return;
+  pendingCallUser = u;
+  const rate = u.callPrice != null ? u.callPrice : 2;
+  $('confirmCallPhotoWrap').innerHTML = u.photo
+    ? '<img class="view-avatar-img" src="' + escAttr(u.photo) + '" alt="">'
+    : '<div class="view-avatar">' + escHtml((u.nickname || '?').charAt(0).toUpperCase()) + '</div>';
+  $('confirmCallName').textContent = (u.nickname || 'Someone') + (u.verified ? ' ✓' : '');
+  $('confirmCallRate').textContent = '💎 ' + rate + '/min to call';
+  $('confirmCallOverlay').classList.remove('hidden');
+}
+function confirmCallRequest() {
+  if (!pendingCallUser) return;
+  const u = pendingCallUser;
+  pendingCallUser = null;
+  $('confirmCallOverlay').classList.add('hidden');
   send({ type: 'call-request', to: u.email });
   toast('Calling ' + (u.nickname || 'user') + '…');
+}
+function cancelCallRequest() {
+  pendingCallUser = null;
+  $('confirmCallOverlay').classList.add('hidden');
 }
 // Small circular Follow button in the call top bar (user-plus when not
 // following, user-check when following). Hidden when there is no peer.

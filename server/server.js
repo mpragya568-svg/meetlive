@@ -50,13 +50,15 @@ let FREE_TRIAL = adminConfig.trialActive !== false;
 let FREE_TRIAL_UNTIL = new Date(adminConfig.trialUntil || '2026-11-13T23:59:59-05:00');
 function trialActive() { return FREE_TRIAL && new Date() < FREE_TRIAL_UNTIL; }
 
-// ---- call billing: the first 55s of every call are free, then it costs diamonds ----
-// Each person pays for their own time: 1 diamond per 30s after the free 55s.
+// ---- call billing: the first 49s of every call are free, then it costs diamonds ----
+// Each person pays the OTHER person's user-defined rate per minute (locked
+// when the call starts) — never a fixed value. Direct calls: the caller
+// pays the callee's rate and the callee earns it.
 // When someone runs out of diamonds mid-call, the call ends for both.
 // (Demo currency for now: everyone starts with free diamonds and can tap
 // for more. Plug in a real payment flow before charging real money.)
-const FREE_CALL_SECONDS = 55;
-const DIAMOND_RATE_SECONDS = 30; // 1 diamond per 30s after the free period
+const FREE_CALL_SECONDS = parseInt(process.env.FREE_CALL_SECONDS || '49', 10);
+const DIAMOND_RATE_SECONDS = parseInt(process.env.DIAMOND_RATE_SECONDS || '30', 10); // block length; rate/min * block/60 per block
 const START_DIAMONDS = 0; // new accounts start with no diamonds — they buy them
 
 // Gifts catalog — costs are in DIAMONDS now (not coins) and live in
@@ -567,8 +569,8 @@ function endPair(user, reason) {
     send(partner.ws, { type: 'peer-left', reason: reason || 'left' });
   }
   // The billing clock stops with the call, and so does direct-call billing.
-  user.callStartAt = null; user.diamondsBilled = 0; user.direct = null;
-  if (partner) { partner.callStartAt = null; partner.diamondsBilled = 0; partner.direct = null; }
+  user.callStartAt = null; user.diamondsBilled = 0; user.direct = null; user.payRatePerMin = 0;
+  if (partner) { partner.callStartAt = null; partner.diamondsBilled = 0; partner.direct = null; partner.payRatePerMin = 0; }
 }
 
 // Find an online user by their (lowercase) email, or null.
@@ -608,7 +610,12 @@ function tryMatch(user) {
     stats.totalMatches++;
     // Random matches are never direct calls.
     user.direct = null; other.direct = null;
-    // Start the billing clock for both: 55s free, then diamonds.
+    // LOCK the agreed rate for this session: each person pays the OTHER
+    // person's user-defined rate (what they charge per minute). A profile
+    // rate change mid-call does not touch this — it only affects future calls.
+    user.payRatePerMin = other.callPrice != null ? other.callPrice : DEFAULT_CALL_PRICE;
+    other.payRatePerMin = user.callPrice != null ? user.callPrice : DEFAULT_CALL_PRICE;
+    // Start the billing clock for both: 49s free, then diamonds at the agreed rate.
     user.callStartAt = Date.now(); user.diamondsBilled = 0;
     other.callStartAt = Date.now(); other.diamondsBilled = 0;
     // `user` is the initiator: they create the WebRTC offer.
@@ -620,58 +627,64 @@ function tryMatch(user) {
 }
 
 // ---- call billing (runs every 5s) ----
-// Random matches: after the free 55s, each 30s block costs 1 diamond from
-// each person. Someone who cannot pay has their call ended.
-// Direct calls (Chamet-style): there is NO free period — the CALLER pays
-// the callee's rate (ratePerMin / 2 diamonds per 30s block) and the CALLEE
-// earns exactly that amount. The callee is never charged.
-function billPair(user, partner) {
+// Every paid call starts with a 49s free trial — no diamonds are deducted
+// during it. After that, each 30s block costs the AGREED rate locked in
+// payRatePerMin when the call started — never a fixed value.
+// Random matches: each person pays the OTHER person's rate. Direct calls:
+// the CALLER pays the callee's rate and the CALLEE earns exactly that
+// amount; the callee is never charged.
+// Billing is cumulative and integer-exact: totalOwed = floor(blocks * rate * blockSecs / 60),
+// so an odd rate (e.g. 5/min = 2.5 per 30s) bills 2 then 3, totalling 5/min.
+// A payer who can't cover the next 30s block has the call ended for both —
+// checked at trial expiry too, so nobody rides the paid period for free.
+function billOne(payer, earner) {
+  if (!payer.callStartAt) return;
+  const rate = payer.payRatePerMin || 0; // diamonds/min, locked at session start
   const now = Date.now();
+  const elapsed = (now - payer.callStartAt) / 1000;
+  const billable = Math.max(0, elapsed - FREE_CALL_SECONDS);
+  const blocks = Math.floor(billable / DIAMOND_RATE_SECONDS);
+  const totalOwed = Math.floor(blocks * rate * DIAMOND_RATE_SECONDS / 60);
+  const owed = totalOwed - (payer.diamondsBilled || 0);
+  if (owed > 0) {
+    if (payer.diamonds >= owed) {
+      payer.diamonds -= owed;
+      payer.diamondsBilled = totalOwed;
+      if (earner) {
+        earner.diamonds += owed;
+        syncDiamonds(earner);
+        send(earner.ws, { type: 'diamonds', diamonds: earner.diamonds });
+      }
+      syncDiamonds(payer);
+      send(payer.ws, { type: 'diamonds', diamonds: payer.diamonds });
+    } else {
+      // Out of diamonds — end the call for both.
+      send(payer.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
+      endPair(payer, 'out-of-diamonds');
+    }
+    return;
+  }
+  // No new block owed yet — but the free trial may just have expired.
+  // If the payer can't cover the NEXT 30s block, end the call now.
+  if (elapsed >= FREE_CALL_SECONDS) {
+    const nextBlock = Math.floor((blocks + 1) * rate * DIAMOND_RATE_SECONDS / 60) - totalOwed;
+    if (nextBlock > 0 && payer.diamonds < nextBlock) {
+      send(payer.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
+      endPair(payer, 'out-of-diamonds');
+    }
+  }
+}
+function billPair(user, partner) {
   const direct = user.direct && partner.direct
     && user.direct.partnerId === partner.id && partner.direct.partnerId === user.id;
   if (direct) {
     const caller = user.direct.role === 'caller' ? user : partner;
     const callee = caller === user ? partner : user;
-    if (!caller.callStartAt) return;
-    const elapsed = (now - caller.callStartAt) / 1000;
-    const blocks = Math.floor(elapsed / DIAMOND_RATE_SECONDS); // no free period
-    const perBlock = caller.direct.ratePerMin / 2;
-    const owed = (blocks - (caller.diamondsBilled || 0)) * perBlock;
-    if (owed <= 0) return;
-    if (caller.diamonds >= owed) {
-      caller.diamonds -= owed;
-      caller.diamondsBilled = blocks;
-      callee.diamonds += owed;
-      syncDiamonds(caller);
-      syncDiamonds(callee);
-      send(caller.ws, { type: 'diamonds', diamonds: caller.diamonds });
-      send(callee.ws, { type: 'diamonds', diamonds: callee.diamonds });
-    } else {
-      // Caller is out of diamonds — end the call for both.
-      send(caller.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
-      endPair(caller, 'out-of-diamonds');
-    }
+    billOne(caller, callee);
     return;
   }
-  for (const u of [user, partner]) {
-    if (!u.callStartAt) continue;
-    const elapsed = (now - u.callStartAt) / 1000;
-    const billable = Math.max(0, elapsed - FREE_CALL_SECONDS);
-    const blocks = Math.floor(billable / DIAMOND_RATE_SECONDS);
-    const owed = blocks - (u.diamondsBilled || 0);
-    if (owed <= 0) continue;
-    if (u.diamonds >= owed) {
-      u.diamonds -= owed;
-      u.diamondsBilled = blocks;
-      syncDiamonds(u);
-      send(u.ws, { type: 'diamonds', diamonds: u.diamonds });
-    } else {
-      // Out of diamonds — end the call for both.
-      send(u.ws, { type: 'time-up', message: 'Out of diamonds — the call has ended.' });
-      endPair(u, 'out-of-diamonds');
-      return;
-    }
-  }
+  billOne(user, null);
+  billOne(partner, null);
 }
 setInterval(() => {
   // Snapshot the pairs first (each pair appears twice in the map).
@@ -693,11 +706,12 @@ wss.on('connection', (ws) => {
     ws,
     nickname: 'Guest',
     gender: 'other',
-    diamonds: START_DIAMONDS, // pays for call time after the free 55s
+    diamonds: START_DIAMONDS, // pays for call time after the free 49s
     callPrice: DEFAULT_CALL_PRICE, // diamonds per minute others pay to call this user
     direct: null, // direct-call billing { role, ratePerMin, partnerId } while in one
     callStartAt: null,         // set when matched; drives the billing clock
-    diamondsBilled: 0,        // 30s blocks already charged for this call
+    diamondsBilled: 0,        // total DIAMONDS billed so far this call (not blocks)
+    payRatePerMin: 0,      // diamonds/min THIS user pays for the current call — locked at session start
     blocked: new Set(), // user ids this user never wants to match again
     joinedAt: Date.now(),
   };
@@ -1081,8 +1095,10 @@ wss.on('connection', (ws) => {
         if (!req || req.from.id !== Number(msg.fromId)) break;
         const caller = req.from;
         pendingCalls.delete(user.id);
-        // Pair like tryMatch, but as a direct call: no free seconds, and
-        // the caller pays the callee's rate while the callee earns it.
+        // Pair like tryMatch, but as a direct call: the caller pays the
+        // callee's rate (locked now — a later profile change doesn't touch
+        // this session) while the callee earns it. Same 49s free trial as
+        // random calls, then paid billing at the agreed rate.
         pairs.set(caller.id, user);
         pairs.set(user.id, caller);
         stats.totalMatches++;
@@ -1091,10 +1107,12 @@ wss.on('connection', (ws) => {
         const rate = user.callPrice; // the callee's rate
         caller.direct = { role: 'caller', ratePerMin: rate, partnerId: user.id };
         user.direct = { role: 'callee', ratePerMin: rate, partnerId: caller.id };
+        caller.payRatePerMin = rate;
+        user.payRatePerMin = 0; // the callee is never charged
         const calleeEmail = String(user.verified.email).toLowerCase();
         const callerEmail = String(caller.verified.email).toLowerCase();
-        send(caller.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: calleeEmail, callPrice: user.callPrice, country: user.country || '', language: user.language || '', bio: user.bio || '' }, initiator: true, freeSeconds: 0, diamonds: caller.diamonds, direct: true, rate, role: 'caller' });
-        send(user.ws, { type: 'matched', peer: { id: caller.id, nickname: caller.nickname, gender: caller.gender, verified: !!caller.verified, photo: caller.photo || null, email: callerEmail, callPrice: caller.callPrice, country: caller.country || '', language: caller.language || '', bio: caller.bio || '' }, initiator: false, freeSeconds: 0, diamonds: user.diamonds, direct: true, rate, role: 'callee' });
+        send(caller.ws, { type: 'matched', peer: { id: user.id, nickname: user.nickname, gender: user.gender, verified: !!user.verified, photo: user.photo || null, email: calleeEmail, callPrice: user.callPrice, country: user.country || '', language: user.language || '', bio: user.bio || '' }, initiator: true, freeSeconds: FREE_CALL_SECONDS, diamonds: caller.diamonds, direct: true, rate, role: 'caller' });
+        send(user.ws, { type: 'matched', peer: { id: caller.id, nickname: caller.nickname, gender: caller.gender, verified: !!caller.verified, photo: caller.photo || null, email: callerEmail, callPrice: caller.callPrice, country: caller.country || '', language: caller.language || '', bio: caller.bio || '' }, initiator: false, freeSeconds: FREE_CALL_SECONDS, diamonds: user.diamonds, direct: true, rate, role: 'callee' });
         break;
       }
 
