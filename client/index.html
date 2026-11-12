@@ -116,8 +116,8 @@
   .controls { position: absolute; bottom: 0; left: 0; right: 0; z-index: 4; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.85)); box-sizing: border-box; max-width: 100%; }
   /* Swipe-left "clean video": every overlay fades out so only the video
      shows. Swipe right (or tap the video) brings it all back. */
-  #screen-call .call-top-info, #screen-call .controls, #screen-call .connecting-overlay { transition: opacity .25s ease, visibility .25s ease; }
-  #screen-call.ui-hidden .call-top-info, #screen-call.ui-hidden .controls, #screen-call.ui-hidden .connecting-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
+  #screen-call .call-top-info, #screen-call .controls, #screen-call .connecting-overlay, #screen-call #liveComments { transition: opacity .25s ease, visibility .25s ease; }
+  #screen-call.ui-hidden .call-top-info, #screen-call.ui-hidden .controls, #screen-call.ui-hidden .connecting-overlay, #screen-call.ui-hidden #liveComments { opacity: 0; visibility: hidden; pointer-events: none; }
   /* Bottom row of five circular controls, no labels — buttons shrink
      proportionally on narrow phones instead of wrapping. */
   .ctrl-row { display: flex; justify-content: space-evenly; flex-wrap: nowrap; gap: clamp(6px, 2.5vw, 14px); max-width: 100%; box-sizing: border-box; }
@@ -138,8 +138,6 @@
   .match-next:active { transform: scale(.95); }
   /* Menu popover (Mic / Camera / Switch live here, above the Menu button). */
   .menu-popover { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); z-index: 5; display: flex; gap: 10px; background: rgba(20,20,40,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.14); border-radius: 20px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.55); }
-  /* Unread chat badge — a small pink counter on the Chat button. */
-  .chat-badge { position: absolute; top: -4px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(0,0,0,.5); box-sizing: border-box; z-index: 1; }
   /* Premium soft-touch glass buttons: a soft light-catching gradient, a
      frosted blur, a bright inner top edge and a deep diffused shadow, with
      a springy press that sinks the button in. */
@@ -191,6 +189,14 @@
   .reaction-bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
   .reaction-bar button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: linear-gradient(155deg, rgba(255,255,255,.3), rgba(255,255,255,.1) 55%, rgba(255,255,255,.06)); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); font-size: 22px; cursor: pointer; box-shadow: inset 0 1px 1px rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.18), 0 8px 20px rgba(0,0,0,.4); transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease; }
   .reaction-bar button:active { transform: scale(.88); box-shadow: inset 0 2px 6px rgba(0,0,0,.25), 0 4px 10px rgba(0,0,0,.4); }
+  /* TikTok LIVE-style floating comments over the video (lower-left).
+     Pointer-events pass through so swipes and PiP drags still work. */
+  #liveComments { position: absolute; left: 12px; right: 12px; bottom: calc(160px + env(safe-area-inset-bottom)); z-index: 2; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 6px; pointer-events: none; max-height: 260px; overflow: hidden; }
+  .live-comment { max-width: 78%; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 14px; padding: 7px 11px; font-size: 14px; line-height: 1.35; color: #fff; word-break: break-word; text-shadow: 0 1px 3px rgba(0,0,0,.5); opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+  .live-comment.show { opacity: 1; transform: translateY(0); }
+  .live-comment.fade-out { opacity: 0; transform: translateY(-8px); }
+  .live-comment b { color: #ffd166; font-weight: 800; }
+  .live-comment.me b { color: #ff8fb0; }
   /* gift fx + reactions + toast */
   #giftFx { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: flex; align-items: center; justify-content: center; }
   #reactionLayer { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
@@ -606,6 +612,7 @@
     </div>
     <div id="giftFx"></div>
     <div id="reactionLayer"></div>
+    <div id="liveComments"></div>
     <div class="controls">
       <div class="gift-panel hidden" id="giftPanel">
         <div class="gift-panel-head"><b>Send a gift</b><button onclick="toggleGiftPanel()" style="display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
@@ -637,7 +644,7 @@
         <button class="match-next" onclick="nextStranger()">Match Next</button>
       </div>
       <div class="ctrl-row">
-        <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></button><span class="chat-badge hidden" id="chatBadge">0</span></div>
+        <div class="ctrl-wrap"><button class="ctrl" id="chatBtn" onclick="toggleChat()" title="Chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></button></div>
         <div class="ctrl-wrap"><button class="ctrl diamond" onclick="toggleBuyPanel()" title="Buy diamonds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg></button></div>
         <div class="ctrl-wrap"><button class="ctrl gift-btn" onclick="toggleGiftPanel()" title="Send a gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/></svg></button></div>
         <div class="ctrl-wrap">
@@ -749,7 +756,6 @@ let myId = null, myDiamonds = 0, myNickname = 'Guest', myGender = 'other';
 let myCallPrice = 2, myEmail = '';
 let peerId = null, peerName = 'Stranger', peerEmail = '';
 let peerCallPrice = null, peerGender = '';
-let chatUnread = 0; // unread call-chat messages while the panel is closed
 // Chamet-style social state: who I follow, the list I'm looking at,
 // who I'm viewing / messaging, and any incoming direct call.
 let following = [];
@@ -1109,10 +1115,9 @@ function handle(msg) {
       // Small circular Follow button next to the profile in the top bar.
       updateFollowPeerBtn();
       $('chatLog').innerHTML = '';
+      clearLiveComments();
       // Chat starts CLOSED on every new call — the user opens it with the
-      // Chat button. Any unread badge from the last call is cleared.
-      chatUnread = 0;
-      setChatBadge(0);
+      // Chat button.
       closeChat();
       $('remoteCamOff').classList.add('hidden');
       $('remoteCamOffName').textContent = peerName;
@@ -1146,14 +1151,11 @@ function handle(msg) {
       }
       break;
     case 'chat':
-      // TikTok-style: the message floats up over the video on its own —
-      // no drawer, no header, nothing else pops up with it.
+      // TikTok LIVE-style: the message floats up over the video as a
+      // comment (and also lands in the chat log for the full panel).
+      // No badge, no auto-open — the panel only opens when the user taps Chat.
       addChatMsg(msg.nickname, msg.text, false, peerPhoto);
-      // Never auto-open the panel: if it's closed, badge the Chat button.
-      if (!chatVisible) {
-        chatUnread++;
-        setChatBadge(chatUnread);
-      }
+      showLiveComment(msg.nickname, msg.text, false);
       break;
     case 'reaction':
       floatReaction(msg.emoji);
@@ -1377,12 +1379,11 @@ function endCallUI() {
   stopCallTimer();
   stopNetMonitor();
   $('giftPanel').classList.add('hidden');
+  clearLiveComments();
   closeMenuPopover();
   $('reactionBar').classList.add('hidden');
   $('peerProfilePopup').classList.add('hidden');
   closeChat();
-  chatUnread = 0;
-  setChatBadge(0);
   $('remoteCamOff').classList.add('hidden');
   $('connectingOverlay').classList.add('hidden');
   $('directRatePill').classList.add('hidden');
@@ -1631,14 +1632,12 @@ function dismissRulesBanner() {
 }
 // ---------- TikTok-style floating chat ----------
 // The panel is HIDDEN by default — it only opens when the user taps Chat.
-// Messages still land in the log while it's closed, and the Chat button
-// gets an unread badge instead of the panel popping open on its own.
+// Messages still land in the log while it's closed, and they float over
+// the video as live comments; there is no unread badge on the Chat button.
 let chatVisible = false;
 function openChat() {
   chatVisible = true;
   $('floatChat').classList.remove('hidden');
-  chatUnread = 0;
-  setChatBadge(0);
 }
 function closeChat() {
   chatVisible = false;
@@ -1649,13 +1648,46 @@ function toggleChat() {
   if (chatVisible) closeChat();
   else openChat();
 }
-function setChatBadge(n) {
-  const b = $('chatBadge');
-  if (!b) return;
-  b.textContent = n > 99 ? '99+' : String(n);
-  b.classList.toggle('hidden', !n);
-}
 function toggleReactionBar() { $('reactionBar').classList.toggle('hidden'); }
+// ---------- TikTok LIVE-style floating comments ----------
+// A comment floats up over the video (lower-left) for ~5s, then fades
+// out. At most 5 show at once; extras queue and appear in order (the
+// queue is capped so a burst can't backlog forever).
+const LIVE_COMMENT_MAX = 5, LIVE_COMMENT_MS = 5000, LIVE_COMMENT_QUEUE_MAX = 10;
+let liveCommentQueue = [];
+function showLiveComment(name, text, me) {
+  if (!text) return;
+  const layer = $('liveComments');
+  if (!layer) return;
+  if (layer.children.length >= LIVE_COMMENT_MAX) {
+    if (liveCommentQueue.length >= LIVE_COMMENT_QUEUE_MAX) liveCommentQueue.shift();
+    liveCommentQueue.push({ name, text, me });
+    return;
+  }
+  const div = document.createElement('div');
+  div.className = 'live-comment' + (me ? ' me' : '');
+  const b = document.createElement('b');
+  b.textContent = name || 'Stranger';
+  div.appendChild(b);
+  div.appendChild(document.createTextNode(': ' + text));
+  layer.appendChild(div);
+  // Fade + slide in on the next frame so the transition runs.
+  requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('show')));
+  setTimeout(() => {
+    div.classList.add('fade-out');
+    setTimeout(() => {
+      div.remove();
+      // A slot opened — show the next queued comment, in order.
+      const next = liveCommentQueue.shift();
+      if (next) showLiveComment(next.name, next.text, next.me);
+    }, 350);
+  }, LIVE_COMMENT_MS);
+}
+function clearLiveComments() {
+  const layer = $('liveComments');
+  if (layer) layer.innerHTML = '';
+  liveCommentQueue = [];
+}
 function sendReaction(emoji) {
   send({ type: 'reaction', emoji });
   floatReaction(emoji);
@@ -1677,6 +1709,7 @@ function sendChat() {
   if (!text) return;
   send({ type: 'chat', text });
   addChatMsg('You', text, true, myPhoto);
+  showLiveComment(myNickname, text, true);
   inp.value = '';
 }
 function addChatMsg(who, text, me, photo) {
