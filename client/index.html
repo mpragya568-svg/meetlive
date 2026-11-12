@@ -356,6 +356,126 @@
     .rules-banner { font-size: 12px; padding: 8px 10px; }
     .controls { padding: 12px 10px calc(14px + env(safe-area-inset-bottom)); }
   }
+
+  /* ============ RESPONSIVE LAYOUT (desktop / laptop) ============
+     The app is mobile-first: every screen is a narrow centered column
+     (380-520px). On wider screens that same column looked like a phone
+     floating in empty space. The rules below widen and re-grid the
+     layout on tablet and desktop WITHOUT touching the mobile design.
+     - .lobby-hero / .lobby-preview-col / .my-profile-cols and their
+       column wrappers are display:contents on mobile, so the mobile
+       layout is byte-for-byte identical to before (children stay direct
+       flex items of their screen). They only become real layout boxes
+       on desktop.
+     - .nav-brand is hidden on mobile; on desktop it appears in the top
+       navigation bar. The bottom nav itself becomes a top bar at >=1024px.
+     Breakpoints: tablet 640-1023px, desktop 1024-1439px, large 1440px+. */
+  .lobby-hero, .lobby-preview-col, .my-profile-cols, .my-profile-col-left, .my-profile-col-right { display: contents; }
+  .nav-brand { display: none; }
+
+  /* ---------- TABLET (640-1023px): wider, two-column lists ---------- */
+  @media (min-width: 640px) {
+    .topbar, .hero, .home-section, .home-footer { max-width: 640px; }
+    .tab-row, .list-wrap, .dm-log { max-width: 640px; }
+    #screen-dm .float-input-row { max-width: 640px; }
+    .card { max-width: 420px; }
+    .preview { max-width: 420px; }
+    .my-profile-head, .my-profile-stats, .edit-card { max-width: 640px; }
+    .my-profile-bio { max-width: 560px; }
+    /* People / conversation lists become a two-column card grid. */
+    .list-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .list-wrap .person-row { height: 100%; }
+    .buy-card { max-width: 420px; }
+    .profile-popup-card { max-width: 380px; }
+  }
+
+  /* ---------- DESKTOP (1024px+): full desktop layout ---------- */
+  @media (min-width: 1024px) {
+    /* --- Desktop top navigation (replaces the mobile bottom nav) --- */
+    #bottomNav { top: 0; bottom: auto; left: 0; right: 0; height: 64px; padding: 0 28px; align-items: center; justify-content: flex-start; background: rgba(16,16,26,.94); border-top: none; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; letter-spacing: -.5px; flex: 0 0 auto; }
+    .nav-brand .logo-mark { width: 32px; height: 32px; }
+    .nav-brand em { font-style: normal; background: linear-gradient(90deg, #ff4d8d, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #navHomeBtn { margin-left: auto; }
+    .nav-btn { flex: none; flex-direction: row; gap: 8px; font-size: 14px; font-weight: 700; padding: 9px 18px; min-height: 44px; border-radius: 999px; }
+    .nav-btn svg { width: 20px; height: 20px; }
+    .nav-btn.active { background: rgba(168,85,247,.16); color: #c084fc; }
+    .nav-btn.active svg { filter: drop-shadow(0 0 6px rgba(168,85,247,.7)); transform: none; }
+    .nav-badge { top: 0; left: auto; right: 6px; }
+    body.has-nav .screen { padding-top: 88px; padding-bottom: 36px; }
+    body.has-nav #screen-call { padding-top: 0; padding-bottom: 0; }
+
+    /* --- Lobby: two-column hero, wide content, 4-across features --- */
+    .topbar, .tab-row, .home-section, .home-footer { max-width: 1120px; }
+    .lobby-hero { display: flex; gap: 56px; align-items: center; width: 100%; max-width: 1120px; margin: 18px 0 10px; }
+    .hero { flex: 1 1 0; min-width: 0; max-width: none; text-align: left; margin: 0; }
+    .hero h1 { font-size: 46px; line-height: 1.12; }
+    .hero-sub { font-size: 17px; max-width: 520px; }
+    .hero .match-btn { max-width: 340px; }
+    .hero-badges { justify-content: flex-start; }
+    .lobby-preview-col { flex: 0 0 400px; display: flex; flex-direction: column; align-items: center; }
+    .lobby-preview-col .preview { max-width: 400px; }
+    .feature-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .feature-card { padding: 20px 18px; }
+    .feature-card h3 { font-size: 16px; }
+    .home-section h2 { text-align: left; }
+    .home-section .sec-sub { text-align: left; }
+
+    /* --- Discover / Following / Messages: three-column card grid --- */
+    .list-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1120px; }
+    .list-wrap .person-row { height: 100%; }
+    #screen-people .topbar, #screen-messages .topbar { max-width: 1120px; }
+    #screen-people .fine, #screen-messages .fine { max-width: 1120px; }
+
+    /* --- DM chat: a comfortable desktop chat width --- */
+    #screen-dm .topbar { max-width: 760px; }
+    .dm-log { max-width: 760px; min-height: 320px; }
+    #screen-dm .float-input-row { max-width: 760px; }
+
+    /* --- Profile view: a wider card --- */
+    #screen-view-profile .topbar { max-width: 460px; }
+    #screen-view-profile .card { max-width: 460px; }
+
+    /* --- My Profile: info left, edit forms right --- */
+    #screen-my-profile .topbar { max-width: 1020px; }
+    .my-profile-cols { display: grid; grid-template-columns: 320px 1fr; gap: 32px; width: 100%; max-width: 1020px; align-items: start; }
+    .my-profile-col-left { display: flex; flex-direction: column; }
+    .my-profile-col-right { display: flex; flex-direction: column; }
+    .my-profile-head { max-width: none; align-items: flex-start; text-align: left; }
+    .my-profile-bio { max-width: none; }
+    .my-profile-stats { max-width: none; }
+    .edit-card { max-width: none; }
+
+    /* --- Auth / setup cards and modals: a little wider, still centred --- */
+    .card { max-width: 440px; }
+    .buy-card { max-width: 460px; }
+    .profile-popup-card { max-width: 400px; }
+    .fine { max-width: 440px; }
+
+    /* --- Call screen: bigger PiP, centred controls, roomier layout --- */
+    .slot-pip { width: 176px; height: 234px; top: 20px; right: 20px; }
+    .video-wrap.swapped .slot-main { width: 176px; height: 234px; top: 20px; right: 20px; }
+    .call-top-info { top: calc(20px + env(safe-area-inset-top)); left: 24px; right: 220px; max-width: calc(100% - 244px); }
+    .call-timer { font-size: 34px; }
+    .controls { padding: 18px 24px calc(22px + env(safe-area-inset-bottom)); }
+    .call-bottom-bar, .float-chat, .gift-panel, .ctrl-row { max-width: 680px; margin-left: auto; margin-right: auto; }
+    .ctrl { width: 62px; height: 62px; }
+    .ctrl svg { width: 26px; height: 26px; }
+    #liveComments { left: 24px; right: 24px; bottom: calc(200px + env(safe-area-inset-bottom)); max-width: 620px; }
+    .gift-tray { flex-wrap: wrap; overflow-x: visible; }
+  }
+
+  /* ---------- LARGE DESKTOP (1440px+): a touch wider, still capped ---------- */
+  @media (min-width: 1440px) {
+    .topbar, .tab-row, .home-section, .home-footer { max-width: 1200px; }
+    .lobby-hero { max-width: 1200px; gap: 72px; }
+    .hero h1 { font-size: 52px; }
+    .list-wrap { max-width: 1200px; }
+    #screen-people .topbar, #screen-messages .topbar { max-width: 1200px; }
+    .my-profile-cols { max-width: 1100px; }
+    #screen-my-profile .topbar { max-width: 1100px; }
+  }
+
   .dm-header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
   /* Small premium Follow pill on the call screen. */
   button.pill { font-family: inherit; color: #fff; cursor: pointer; }
@@ -470,20 +590,24 @@
   </div>
   <div id="trialPill" class="pill gold hidden" style="margin-bottom:14px">Free trial — all gifts are free!</div>
 
-  <!-- HERO -->
-  <div class="hero">
-    <h1>Meet someone new,<br><em>live on video.</em></h1>
-    <p class="hero-sub">One tap and you're face to face with a real person — no endless typing, just a quick hello that can turn into a real conversation.</p>
-    <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Video Chat</button>
-    <div class="hero-badges">
-      <span class="hero-badge"><span class="ok">✓</span> Verified profiles</span>
-      <span class="hero-badge"><span class="ok">✓</span> Real people</span>
-      <span class="hero-badge">18+ only</span>
+  <!-- HERO: .lobby-hero is display:contents on mobile (no visual change)
+       and a two-column row on desktop (headline left, camera right). -->
+  <div class="lobby-hero">
+    <div class="hero">
+      <h1>Meet someone new,<br><em>live on video.</em></h1>
+      <p class="hero-sub">One tap and you're face to face with a real person — no endless typing, just a quick hello that can turn into a real conversation.</p>
+      <button class="match-btn" onclick="findMatch()"><span class="play">▶</span> Start Video Chat</button>
+      <div class="hero-badges">
+        <span class="hero-badge"><span class="ok">✓</span> Verified profiles</span>
+        <span class="hero-badge"><span class="ok">✓</span> Real people</span>
+        <span class="hero-badge">18+ only</span>
+      </div>
+    </div>
+    <div class="lobby-preview-col">
+      <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
+      <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:12px">First 49 seconds of every call are free — after that you pay the other person's rate per minute.</p>
     </div>
   </div>
-
-  <video class="preview mirrored" id="localVideoLobby" autoplay muted playsinline></video>
-  <p style="color:#ffd166;font-size:13px;text-align:center;margin-top:12px">First 49 seconds of every call are free — after that you pay the other person's rate per minute.</p>
 
   <div class="tab-row" id="lobbyTabs">
     <button class="tab-btn active" id="tabDiscover" onclick="openTab('discover')">Discover</button>
@@ -606,20 +730,24 @@
   <div class="topbar">
     <b style="font-size:17px">My Profile</b>
   </div>
-  <div class="my-profile-head">
-    <div class="my-profile-photo" id="myProfilePhoto">?</div>
-    <div class="my-profile-name" id="myProfileName">—</div>
-    <div class="my-profile-email" id="myProfileEmail"></div>
-    <div class="my-profile-meta" id="myProfileMeta"></div>
-    <p class="my-profile-bio" id="myProfileBio"></p>
-  </div>
-  <div class="my-profile-stats">
-    <button class="stat-block" onclick="openMyFollowers()"><b id="statFollowers">0</b><span>Followers</span></button>
-    <button class="stat-block" onclick="openMyFollowing()"><b id="statFollowing">0</b><span>Following</span></button>
-    <button class="stat-block" onclick="openMyFriends()"><b id="statFriends">0</b><span>Friends</span></button>
-  </div>
-  <div class="edit-card">
-    <h3>Edit profile</h3>
+  <div class="my-profile-cols">
+    <div class="my-profile-col-left">
+      <div class="my-profile-head">
+        <div class="my-profile-photo" id="myProfilePhoto">?</div>
+        <div class="my-profile-name" id="myProfileName">—</div>
+        <div class="my-profile-email" id="myProfileEmail"></div>
+        <div class="my-profile-meta" id="myProfileMeta"></div>
+        <p class="my-profile-bio" id="myProfileBio"></p>
+      </div>
+      <div class="my-profile-stats">
+        <button class="stat-block" onclick="openMyFollowers()"><b id="statFollowers">0</b><span>Followers</span></button>
+        <button class="stat-block" onclick="openMyFollowing()"><b id="statFollowing">0</b><span>Following</span></button>
+        <button class="stat-block" onclick="openMyFriends()"><b id="statFriends">0</b><span>Friends</span></button>
+      </div>
+    </div>
+    <div class="my-profile-col-right">
+      <div class="edit-card">
+        <h3>Edit profile</h3>
     <label>Display name</label>
     <input type="text" id="editNickname" maxlength="20" placeholder="Your display name">
     <label>Bio</label>
@@ -638,7 +766,9 @@
       <span style="font-size:15px">💎 <b id="myProfileDiamonds">0</b> diamonds</span>
       <button class="btn small" onclick="toggleBuyPanel()">Buy</button>
     </div>
-    <button class="btn ghost" style="margin-top:12px" onclick="signOut()">Sign out</button>
+        <button class="btn ghost" style="margin-top:12px" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -736,7 +866,6 @@
         </div>
         <div class="ctrl-wrap"><button class="ctrl end-btn" onclick="endCall()" title="End call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
       </div>
-      </div>
     </div>
   </div>
 </div>
@@ -744,6 +873,7 @@
 
 <!-- Premium bottom navigation (Home / Messages / My Profile) -->
 <nav id="bottomNav" aria-label="Main navigation">
+  <div class="nav-brand" aria-hidden="true"><svg class="logo-mark" viewBox="0 0 48 48"><use href="#logoMark"/></svg><span>Meet<em>Live</em></span></div>
   <button class="nav-btn active" id="navHomeBtn" onclick="goHome()" title="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></button>
   <button class="nav-btn" id="navMsgBtn" onclick="goMessages()" title="Messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span>Messages</span><span class="nav-badge hidden" id="navMsgBadge">0</span></button>
   <button class="nav-btn" id="navProfileBtn" onclick="goMyProfile()" title="My Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
