@@ -383,6 +383,14 @@ function requireAdmin(req, res, next) {
   req.adminProfile = profile;
   next();
 }
+// Backup/restore auth: the admin's session token, OR a shared BACKUP_TOKEN
+// (set as a Render env var) so an automated backup job can run without a
+// browser sign-in. Never log or return the token.
+const BACKUP_TOKEN = process.env.BACKUP_TOKEN || '';
+function requireBackupAuth(req, res, next) {
+  if (BACKUP_TOKEN && String(req.headers['x-backup-token'] || '') === BACKUP_TOKEN) return next();
+  return requireAdmin(req, res, next);
+}
 function findUserById(id) {
   for (const u of clients.values()) if (u.id === id) return u;
   return null;
@@ -477,6 +485,78 @@ app.post('/admin/api/trial', requireAdmin, (req, res) => {
   res.json({ ok: true, trialActive: trialActive(), trialSetting: FREE_TRIAL, trialUntil: FREE_TRIAL_UNTIL.toISOString() });
 });
 // Gift prices (diamonds) — the admin can change what each gift costs.
+// ---- data backup & restore (data-preservation) ----
+// All user data lives in JSON files on the server's disk. Render's free
+// tier wipes that disk on every redeploy and every sleep/wake, so without
+// backups every follower, message, profile and diamond balance is lost.
+// These endpoints let an automated job export the data and restore it
+// after a wipe. Restore is MERGE-ONLY: it fills in missing records and
+// never overwrites data that already exists, so a restore can never
+// delete a follow, message or balance created after the backup was taken.
+app.get('/admin/api/backup', requireBackupAuth, (req, res) => {
+  res.json({
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    profiles, follows, dms,
+    diamondBalances,
+    processedCheckouts: [...processedCheckouts],
+    gifts: GIFTS,
+    adminConfig,
+  });
+});
+app.post('/admin/api/restore', requireBackupAuth, (req, res) => {
+  const b = req.body || {};
+  let restored = { profiles: 0, follows: 0, dms: 0, diamondBalances: 0 };
+  // Profiles: only add ones that don't exist locally.
+  if (b.profiles && typeof b.profiles === 'object') {
+    for (const [email, prof] of Object.entries(b.profiles)) {
+      if (prof && typeof prof === 'object' && !profiles[email]) { profiles[email] = prof; restored.profiles++; }
+    }
+    saveProfiles();
+  }
+  // Follows: union — keep every relationship from both sides.
+  if (b.follows && typeof b.follows === 'object') {
+    for (const [email, list] of Object.entries(b.follows)) {
+      if (!Array.isArray(list)) continue;
+      const cur = new Set(follows[email] || []);
+      let added = 0;
+      for (const t of list) { if (typeof t === 'string' && !cur.has(t)) { cur.add(t); added++; } }
+      if (added) { follows[email] = [...cur]; restored.follows += added; }
+    }
+    saveFollows();
+  }
+  // DMs: merge conversations, dedupe identical messages.
+  if (b.dms && typeof b.dms === 'object') {
+    for (const [key, msgs] of Object.entries(b.dms)) {
+      if (!Array.isArray(msgs)) continue;
+      const cur = dms[key] || (dms[key] = []);
+      const seen = new Set(cur.map(m => JSON.stringify(m)));
+      let added = 0;
+      for (const m of msgs) {
+        const k = JSON.stringify(m);
+        if (!seen.has(k)) { seen.add(k); cur.push(m); added++; }
+      }
+      if (cur.length > 200) cur.splice(0, cur.length - 200);
+      restored.dms += added;
+    }
+    saveDMs();
+  }
+  // Diamond balances: only fill in accounts that are missing/zero locally,
+  // so a restore never overwrites a balance that already exists.
+  if (b.diamondBalances && typeof b.diamondBalances === 'object') {
+    for (const [email, n] of Object.entries(b.diamondBalances)) {
+      if (typeof n === 'number' && n > 0 && !(diamondBalances[email] > 0)) {
+        diamondBalances[email] = Math.floor(n); restored.diamondBalances++;
+      }
+    }
+    saveDiamondStore();
+  }
+  if (Array.isArray(b.processedCheckouts)) {
+    for (const id of b.processedCheckouts) processedCheckouts.add(id);
+    saveDiamondStore();
+  }
+  res.json({ ok: true, restored });
+});
 app.post('/admin/api/gifts', requireAdmin, (req, res) => {
   const incoming = req.body?.gifts;
   if (!incoming || typeof incoming !== 'object') return res.status(400).json({ error: 'Send { gifts: { id: { cost } } }.' });
@@ -749,18 +829,30 @@ wss.on('connection', (ws) => {
         // Display name is editable after sign-in: use the typed name when
         // given, otherwise the Google name. The ✓ badge stays — the user
         // is still a verified Google account.
+        // DATA-PRESERVATION: a re-join (new phone/browser, refresh) must
+        // NOT wipe the saved profile. When the client sends no nickname,
+        // gender or photo (e.g. a device with no localStorage photo), keep
+        // the values already on file instead of overwriting them with
+        // the Google name / 'other' / null. The saved profile is the
+        // fallback; the join message only overrides what it actually sends.
+        const emailKey = String(profile.email).toLowerCase();
+        const savedProfile = profiles[emailKey];
         const displayName = String(msg.nickname || '').trim().slice(0, 20);
-        user.nickname = displayName || profile.name.slice(0, 20);
-        user.gender = ['male', 'female', 'other'].includes(msg.gender) ? msg.gender : 'other';
+        user.nickname = displayName
+          || (savedProfile && typeof savedProfile.nickname === 'string' && savedProfile.nickname.trim())
+          || profile.name.slice(0, 20);
+        user.gender = ['male', 'female', 'other'].includes(msg.gender)
+          ? msg.gender
+          : (savedProfile && ['male', 'female', 'other'].includes(savedProfile.gender) ? savedProfile.gender : 'other');
         // Optional profile photo (small data URL or a Google photo URL) —
         // shown to the matched stranger when the camera is off.
-        user.photo = typeof msg.photo === 'string' ? msg.photo.slice(0, 200000) : null;
+        user.photo = typeof msg.photo === 'string' && msg.photo
+          ? msg.photo.slice(0, 200000)
+          : (savedProfile && typeof savedProfile.photo === 'string' ? savedProfile.photo : null);
         user.joined = true;
         // Call price + public profile: load their own rate (default 2) and
         // keep their nickname/photo on file so follows and DMs can show
         // them even when they are offline.
-        const emailKey = String(profile.email).toLowerCase();
-        const savedProfile = profiles[emailKey];
         user.callPrice = savedProfile && typeof savedProfile.callPrice === 'number'
           ? Math.max(0, Math.min(100, Math.floor(savedProfile.callPrice)))
           : DEFAULT_CALL_PRICE;
@@ -910,8 +1002,16 @@ wss.on('connection', (ws) => {
       // country, language and call price. Validated and clamped; the
       // saved profile is echoed back so the screen can refresh.
       case 'update-profile': {
+        // Profile edits touch ONLY profile fields — never follows, DMs,
+        // diamonds or any other user's data. A photo update is stored
+        // server-side (profiles.json) so it survives refresh/logout and
+        // is not just in browser localStorage.
         const email = String(user.verified.email).toLowerCase();
         const p = profiles[email] || (profiles[email] = { callPrice: DEFAULT_CALL_PRICE, nickname: user.nickname, photo: user.photo || null, gender: user.gender, country: '', language: '', bio: '' });
+        if (msg.photo !== undefined) {
+          if (msg.photo === null) { user.photo = null; p.photo = null; }
+          else if (typeof msg.photo === 'string' && msg.photo.length <= 200000) { user.photo = msg.photo; p.photo = msg.photo; }
+        }
         if (typeof msg.nickname === 'string' && msg.nickname.trim()) {
           const nick = msg.nickname.trim().slice(0, 20);
           user.nickname = nick; p.nickname = nick;
@@ -1146,6 +1246,12 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
+  // Data-preservation: log what actually loaded, so a disk wipe (empty
+  // files after a redeploy/sleep) is visible in the logs instead of silent.
+  console.log(`[data] loaded profiles=${Object.keys(profiles).length} follows=${Object.keys(follows).length} dms=${Object.keys(dms).length} diamondAccounts=${Object.keys(diamondBalances).length}`);
+  if (!Object.keys(profiles).length && !Object.keys(follows).length && !Object.keys(dms).length) {
+    console.log('[data] WARNING: no user data loaded — the disk may have been wiped (redeploy/sleep). Restore the latest backup via POST /admin/api/restore.');
+  }
   console.log(`MeetLive server running on http://localhost:${PORT}`);
   console.log('Open it in two browser windows/tabs to test matching.');
 });

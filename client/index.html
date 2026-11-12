@@ -1096,6 +1096,9 @@ function removePhoto() {
   localStorage.removeItem('meetlive_photo');
   localStorage.setItem('meetlive_photo_off', '1');
   loadMyPhoto();
+  // Persist the removal server-side too — otherwise the old photo comes
+  // back from the server profile on the next sign-in.
+  if (ws && ws.readyState === WebSocket.OPEN) send({ type: 'update-profile', photo: null });
 }
 function onPhotoPicked(file) {
   if (!file) return;
@@ -1110,9 +1113,14 @@ function onPhotoPicked(file) {
     // Cover-crop to a square, then shrink so it stays tiny in storage.
     const s = Math.min(img.width, img.height);
     ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
-    try { localStorage.setItem('meetlive_photo', c.toDataURL('image/jpeg', 0.7)); } catch {}
+    const dataUrl = c.toDataURL('image/jpeg', 0.7);
+    try { localStorage.setItem('meetlive_photo', dataUrl); } catch {}
     localStorage.removeItem('meetlive_photo_off');
     loadMyPhoto();
+    // Persist server-side too (update-profile stores it in profiles.json),
+    // so the photo survives refresh/logout and shows on other devices.
+    // If we're not connected yet it goes up with the next join instead.
+    if (ws && ws.readyState === WebSocket.OPEN) send({ type: 'update-profile', photo: dataUrl });
     toast('Profile photo added');
   };
   img.onerror = () => { URL.revokeObjectURL(url); toast('Could not read that photo.'); };
